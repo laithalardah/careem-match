@@ -1,9 +1,9 @@
-"""Bedrock agent: picks the restaurant from the shortlist and builds the basket with tool use.
+"""Bedrock agent: picks the restaurant the group goes to, from the shortlist, using tool use.
 
 Converse API, model global.anthropic.claude-sonnet-5-5 (us-east-1), at most MAX_ITERATIONS model calls.
-The model only sees READ-ONLY tools (menu, item options) plus `submit_plan`. Everything it submits is
-re-checked by code (validate): wrong restaurant, unknown dish, missing person or missing required option
-are rejected, and prices are recomputed from the menu. On any problem planner.py takes over.
+The model sees only READ-ONLY tools (look at a restaurant's menu/status) plus `submit_plan`. What it submits is
+re-checked by code (validate): the restaurant must be on the shortlist, open, and have something to order.
+On any problem planner.py takes over. There are no dishes or baskets: the group orders in Careem itself.
 """
 from __future__ import annotations
 
@@ -15,53 +15,41 @@ import time
 import bedrock_client
 import dispute
 import scoring
-from catalog import Option, Restaurant
-from planner import LookupFailed, Plan, PlanFailed, PlanLine, Trace, _parse_option_groups, group_reasoning, lookup, validate_options, why_for
+from catalog import Restaurant
+from planner import LookupFailed, Plan, PlanFailed, Trace, check_orderable, group_reasoning, lookup, menu_summary, why_for
 from rooms import Room
 
 log = logging.getLogger("agent")
 MAX_ITERATIONS = 8
 EXPIRED_CODES = {"ExpiredTokenException", "ExpiredToken", "UnrecognizedClientException", "InvalidSignatureException", "InvalidClientTokenId"}
 
-SYSTEM = """You are the ordering agent of Careem Match. A group of friends swiped on restaurants; you turn the shortlist into ONE food order.
+SYSTEM = """You are the matching agent of Careem Match. A group of friends swiped on restaurants; you decide which ONE restaurant they go to. After you decide, the app sends everyone to that restaurant in Careem, where they start a normal group order and pick their own dishes.
 
 Rules you must follow:
 - Choose the restaurant ONLY from the shortlist. If the group already decided (a single restaurant on the shortlist), use it.
 - Prefer a restaurant liked by most people with nobody vetoing it. Never pick a vetoed restaurant unless nothing else works.
-- Call get_restaurant_menu to check the restaurant is open and see its dishes. If it is closed or the call fails, move to the next shortlisted restaurant (re-plan).
-- Call get_item_options for dishes that need options. Every required option group must get its minimum number of choices. Prefer the cheapest choice unless a person's history suggests otherwise.
-- Give each person 1 or 2 dishes. Prefer dishes they ordered before (see their history) and keep the order sensible and varied.
-- Use only ids you were given. Never invent restaurants, dishes, options or prices.
-- Finish by calling submit_plan exactly once. The reasoning must be ONE short sentence that is true given the data. Each person's `why` is one short sentence.
-- You can only look things up. You never place an order, add to a cart, or pay: a human host approves the order later.
-- Tool errors are readable messages. Explain them to yourself and decide whether to try another restaurant.
-- Location is Amman, Jordan. Use the currency the data shows. Do not convert prices."""
+- Call get_restaurant_menu to check the restaurant is open and has dishes. If it is closed or the call fails, move to the next shortlisted restaurant (re-plan).
+- Use only ids you were given. Never invent restaurants.
+- Finish by calling submit_plan exactly once. The reasoning must be ONE short sentence that is true given the data. Each person's `why` is one short sentence addressed to that person ("You liked ...", "You ordered here 4 days ago"), about why this restaurant suits them (their votes, their history); never start it with their name.
+- You can only look things up. You never order, add to a cart, or pay.
+- Tool errors are readable messages. Explain them to yourself and decide whether another restaurant is the better choice.
+- Do not talk about dishes or prices in the reasoning: people choose their own in Careem."""
 
 TOOLS = [
     {"toolSpec": {
         "name": "get_restaurant_menu",
-        "description": "Read-only. Is the restaurant open, and what dishes (id, name, price, requires_options) does it have?",
+        "description": "Read-only. Is the restaurant open, how is it rated, how long is delivery, and what are its top dishes?",
         "inputSchema": {"json": {"type": "object", "properties": {"restaurant_id": {"type": "integer"}}, "required": ["restaurant_id"]}},
     }},
     {"toolSpec": {
-        "name": "get_item_options",
-        "description": "Read-only. Option groups (required or optional) with option ids and prices for dishes of one restaurant.",
-        "inputSchema": {"json": {"type": "object", "properties": {
-            "restaurant_id": {"type": "integer"}, "item_ids": {"type": "array", "items": {"type": "string"}}},
-            "required": ["restaurant_id", "item_ids"]}},
-    }},
-    {"toolSpec": {
         "name": "submit_plan",
-        "description": "Submit the final plan once. lines = what each person gets (option_ids from get_item_options).",
+        "description": "Submit the final choice once.",
         "inputSchema": {"json": {"type": "object", "properties": {
             "restaurant_id": {"type": "integer"},
-            "lines": {"type": "array", "items": {"type": "object", "properties": {
-                "participant_id": {"type": "string"}, "item_id": {"type": "string"},
-                "option_ids": {"type": "array", "items": {"type": "string"}}}, "required": ["participant_id", "item_id"]}},
             "reasoning": {"type": "string"},
             "per_person": {"type": "array", "items": {"type": "object", "properties": {
                 "participant_id": {"type": "string"}, "why": {"type": "string"}}, "required": ["participant_id", "why"]}},
-        }, "required": ["restaurant_id", "lines", "reasoning", "per_person"]}},
+        }, "required": ["restaurant_id", "reasoning", "per_person"]}},
     }},
 ]
 
@@ -99,7 +87,7 @@ def build_task(room: Room, group: dict, resolution: str) -> str:
             "vetoed_by": [names.get(p, p) for p in (rk.vetoed_by if rk else []) if p in names],
         })
     return json.dumps({
-        "task": "Build one food order for these people.", "how_the_group_decided": resolution,
+        "task": "Choose the one restaurant this group goes to.", "how_the_group_decided": resolution,
         "meal": room.meal, "people": people, "shortlist": shortlist,
         "note": "History marked source 'demo' is simulated for demo friends.",
     }, ensure_ascii=False)
@@ -107,12 +95,11 @@ def build_task(room: Room, group: dict, resolution: str) -> str:
 
 # ── Tool execution (read-only) ───────────────────────────────────────────────
 class Session:
-    """Per-plan state: menus and options the model has looked at (the validator reuses them)."""
+    """Per-plan state: menus the model has looked at (the validator reuses them)."""
 
     def __init__(self, room: Room, gw, group: dict, trace: Trace):
         self.room, self.gw, self.group, self.trace = room, gw, group, trace
         self.menus: dict[int, Restaurant] = {}
-        self.options: dict[tuple[int, str], list] = {}
 
     def check_shortlisted(self, rid) -> int:
         if rid not in self.group["shortlist"]:
@@ -121,9 +108,8 @@ class Session:
 
     async def menu(self, rid: int) -> Restaurant:
         if rid not in self.menus:
-            self.menus[rid] = await lookup(
-                self.trace, self.gw.cached, "food_get_restaurant_menu", {"restaurant_id": rid}, lambda: self.gw.menu(rid),
-                lambda r: f"{r.name}: {'open' if r.available else 'CLOSED'}, {len([d for d in r.dishes if d.active])} dishes.")
+            self.menus[rid] = await lookup(self.trace, self.gw.cached, "food_get_restaurant_menu", {"restaurant_id": rid},
+                                           lambda: self.gw.menu(rid), menu_summary)
         return self.menus[rid]
 
     async def tool_menu(self, args: dict) -> dict:
@@ -131,62 +117,24 @@ class Session:
         try:
             r = await self.menu(rid)
         except LookupFailed as e:
-            return {"error": f"Could not load the menu: {e}. Try another shortlisted restaurant."}
-        return {"restaurant_id": rid, "name": r.name, "open": r.available, "currency": r.currency,
-                "dishes": [{"item_id": d.id, "name": d.name, "price": d.price, "requires_options": d.requires_options}
-                           for d in r.dishes if d.active]}
-
-    async def tool_options(self, args: dict) -> dict:
-        rid = self.check_shortlisted(int(args["restaurant_id"]))
-        ids = [str(i) for i in args.get("item_ids", [])]
-        try:
-            got = await lookup(self.trace, self.gw.cached, "food_get_items_options", {"restaurant_id": rid, "item_ids": ids},
-                               lambda: self.gw.options(rid, ids), lambda r: f"Option groups for {len(r)} item(s).")
-        except LookupFailed as e:
-            return {"error": f"Could not load options: {e}."}
-        for item_id, groups in got.items():
-            self.options[(rid, item_id)] = groups
-        return {"items": [{"item_id": i, "option_groups": [
-            {"group_id": g.id, "name": g.name, "required": g.required, "min": g.min, "max": g.max,
-             "options": [{"option_id": o.catalog_option_id, "name": o.name, "price": o.price} for o in g.options]} for g in groups]}
-            for i, groups in got.items()]}
+            return {"error": f"Could not load the restaurant: {e}. Try another shortlisted restaurant."}
+        return {"restaurant_id": rid, "name": r.name, "open": r.available, "rating": r.rating, "eta_minutes": r.eta_minutes,
+                "top_dishes": r.top_dishes, "currency": r.currency}
 
     async def validate(self, plan_in: dict) -> Plan:
-        """Rebuild the plan from ids and re-check everything. Raises PlanFailed with a message the model can act on."""
+        """Re-check the submitted choice. Raises PlanFailed with a message the model can act on."""
         rid = self.check_shortlisted(int(plan_in["restaurant_id"]))
         rest = await self.menu(rid)
-        if not rest.available:
-            raise PlanFailed(f"{rest.name} is closed. Choose another shortlisted restaurant.")
+        try:
+            check_orderable(rest)
+        except PlanFailed as e:
+            raise PlanFailed(f"{e}. Choose another shortlisted restaurant.") from e
         pids = self.group["participant_ids"]
-        dishes = {d.id: d for d in rest.dishes if d.active}
-        lines: list[PlanLine] = []
-        for ln in plan_in.get("lines", []):
-            pid, dish = ln.get("participant_id"), dishes.get(str(ln.get("item_id")))
-            if pid not in pids:
-                raise PlanFailed(f"unknown participant_id {pid}")
-            if not dish:
-                raise PlanFailed(f"item {ln.get('item_id')} is not an active dish of {rest.name}")
-            groups = self.options.get((rid, dish.id), dish.option_groups)
-            by_id = {o.catalog_option_id: o for g in groups for o in g.options}
-            chosen: list[Option] = []
-            for oid in ln.get("option_ids", []) or []:
-                if oid not in by_id:
-                    raise PlanFailed(f"option {oid} does not belong to {dish.name}")
-                chosen.append(by_id[oid])
-            validate_options(dish, groups, chosen)
-            lines.append(PlanLine(pid, dish, chosen))
-        missing = [self.room.participants[p].name for p in pids if p not in {l.participant_id for l in lines}]
-        if missing:
-            raise PlanFailed("these people have no dish: " + ", ".join(missing))
-        for pid in pids:
-            if sum(1 for l in lines if l.participant_id == pid) > 2:
-                raise PlanFailed(f"{self.room.participants[pid].name} has more than 2 dishes")
         why = {p.get("participant_id"): str(p.get("why", ""))[:200] for p in plan_in.get("per_person", [])}
-        first = {l.participant_id: l.dish for l in reversed(lines)}
-        per_person = [{"participant_id": p, "name": self.room.participants[p].name,
-                       "why": why.get(p) or why_for(self.room, p, rest, first[p])} for p in pids]
+        per_person = [{"participant_id": p, "name": self.room.participants[p].name, "why": why.get(p) or why_for(self.room, p, rest)}
+                      for p in pids]
         reasoning = str(plan_in.get("reasoning", "")).strip()[:240] or group_reasoning(self.room, rest, self.group, "consensus")
-        return Plan(rest, lines, reasoning, per_person, source="agent")
+        return Plan(rest, reasoning, per_person, source="agent")
 
 
 # ── The loop ─────────────────────────────────────────────────────────────────
@@ -200,7 +148,7 @@ async def plan_with_agent(room: Room, gw, group: dict, trace: Trace, resolution:
     for i in range(MAX_ITERATIONS):
         resp = await asyncio.to_thread(
             converse, messages, system=[{"text": SYSTEM}], toolConfig={"tools": TOOLS},
-            inferenceConfig={"maxTokens": 1500})  # no `temperature`: deprecated for this model (Bedrock rejects it)
+            inferenceConfig={"maxTokens": 1000})  # no `temperature`: deprecated for this model (Bedrock rejects it)
         u = resp.get("usage", {})
         tokens += u.get("inputTokens", 0) + u.get("outputTokens", 0)
         msg = resp["output"]["message"]
@@ -215,12 +163,10 @@ async def plan_with_agent(room: Room, gw, group: dict, trace: Trace, resolution:
             try:
                 if name == "get_restaurant_menu":
                     out = await s.tool_menu(args)
-                elif name == "get_item_options":
-                    out = await s.tool_options(args)
                 elif name == "submit_plan":
                     plan = await s.validate(args)
                     trace.add("submit_plan", {"restaurant_id": plan.restaurant.id},
-                              f"Plan accepted for {plan.restaurant.name} after {i + 1} model call(s), {tokens} tokens, {time.time() - started:.1f}s.")
+                              f"Choice accepted: {plan.restaurant.name} after {i + 1} model call(s), {tokens} tokens, {time.time() - started:.1f}s.")
                     log.info("agent ok: room=%s calls=%d tokens=%d secs=%.1f", room.code, i + 1, tokens, time.time() - started)
                     return plan
                 else:
@@ -230,9 +176,9 @@ async def plan_with_agent(room: Room, gw, group: dict, trace: Trace, resolution:
                 out, status = {"error": f"Rejected: {e}"}, "error"
                 if name == "submit_plan":
                     repairs += 1
-                    trace.add("submit_plan", {}, f"Plan rejected: {e}", failed=True)
+                    trace.add("submit_plan", {}, f"Choice rejected: {e}", failed=True)
                     if repairs > 1:
-                        raise AgentError(f"plan rejected twice: {e}") from e
+                        raise AgentError(f"choice rejected twice: {e}") from e
             results.append({"toolResult": {"toolUseId": call["toolUseId"], "content": [{"text": json.dumps(out, ensure_ascii=False)}], "status": status}})
         messages.append({"role": "user", "content": results})
-    raise AgentError(f"no plan after {MAX_ITERATIONS} model calls ({tokens} tokens)")
+    raise AgentError(f"no choice after {MAX_ITERATIONS} model calls ({tokens} tokens)")

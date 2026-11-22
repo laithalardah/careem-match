@@ -1,4 +1,4 @@
-"""Deterministic planner: baskets, options, re-planning, retries, read-only."""
+"""Deterministic planner: picks the restaurant, re-plans, retries, never orders."""
 import re
 from pathlib import Path
 
@@ -17,50 +17,34 @@ def result(h, code):
     return h.c.get(f"/rooms/{code}/result").json()
 
 
-def test_consensus_basket_with_required_options(h):
+def test_consensus_gives_a_restaurant_and_no_basket(h):
     code, pids = play(h, CONSENSUS)
     res = result(h, code)
     assert res["status"] == "ready" and res["resolution"]["type"] == "consensus"
     g = res["groups"][0]
-    assert g["restaurant"]["name"] == "Shawarma Station" and g["currency"] == "AED" and g["restaurant"]["link"]
-    assert len(g["basket"]) == 4 and {b["participant_id"] for b in g["basket"]} == set(pids.values())
-    # the wrap needs a size: it must carry a chosen option, and prices include options
-    wrap = [b for b in g["basket"] if b["dish_name"] == "Chicken Shawarma Wrap"]
-    assert wrap and all(b["options"] for b in wrap)
-    assert g["total_price"] == round(sum(b["price"] for b in g["basket"]), 2)
-    # top-level fields mirror the single group
-    assert res["restaurant"] == g["restaurant"] and res["basket"] == g["basket"] and res["total_price"] == g["total_price"]
-    assert [p["name"] for p in g["per_person"]] == ["A", "B", "C", "D"]
-    assert all(p["why"] for p in g["per_person"])
-    assert res["reasoning"] == g["reasoning"] and "3 of 4" in g["reasoning"]
+    assert g["restaurant"]["name"] == "Shawarma Station" and g["restaurant"]["link"] == "careemfood://restaurants/30101"
+    assert g["participant_ids"] == list(pids.values())
+    # everyone picks their own dishes in Careem's group order: no dishes and no prices from us
+    assert g["basket"] == [] and g["total_price"] == 0 and g["currency"] == "AED"
+    assert res["restaurant"] == g["restaurant"] and res["basket"] == []
+    assert [p["name"] for p in g["per_person"]] == ["A", "B", "C", "D"] and all(p["why"] for p in g["per_person"])
+    assert "3 of 4" in g["reasoning"] and "dish" not in g["reasoning"].lower()
+    assert res["reasoning"] == g["reasoning"]
 
 
-def test_a_group_does_not_get_four_of_the_same_dish(h):
+def test_per_person_reasons_come_from_votes_and_history(h):
     code, pids = play(h, CONSENSUS)
-    basket = result(h, code)["groups"][0]["basket"]
-    dishes = [b["dish_name"] for b in basket]
-    # Shawarma Station has 3 dishes for 4 people: all three appear, only one repeats
-    assert len(set(dishes)) == 3
-    from collections import Counter
-    assert max(Counter(dishes).values()) == 2
-
-
-def test_history_decides_the_host_dish(h):
-    code, pids = play(h, CONSENSUS)
-    g = result(h, code)["groups"][0]
-    host_line = next(b for b in g["basket"] if b["participant_id"] == pids["A"])
-    assert host_line["dish_name"] in ("Chicken Shawarma Wrap", "Falafel Plate")  # host ordered these before
-    why = next(p for p in g["per_person"] if p["participant_id"] == pids["A"])["why"]
-    assert "ordered it before" in why
+    why = {p["name"]: p["why"] for p in result(h, code)["groups"][0]["per_person"]}
+    assert why["A"].startswith("You liked Shawarma Station.") and "ordered here before" in why["A"]  # the host has history
+    assert "ordered here before" not in why["B"]  # guests have none
+    assert why["D"].startswith("You skipped Shawarma Station")  # honest about the person who wanted pizza
 
 
 def test_scores_and_trace_are_present(h):
     code, _ = play(h, CONSENSUS)
     res = result(h, code)
     assert res["scores"] and {"restaurant_id", "restaurant_name", "group_score", "per_person"} <= set(res["scores"][0])
-    tools = [s["tool"] for s in res["agent_trace"]]
-    assert "cache:food_get_restaurant_menu" in tools and "cache:food_get_items_options" in tools and "plan" in tools
-    assert [s["iteration"] for s in res["agent_trace"]] == list(range(1, len(tools) + 1))
+    assert [s["tool"] for s in res["agent_trace"]] == ["cache:food_get_restaurant_menu"]
     assert set(res["agent_trace"][0]) == {"iteration", "tool", "input", "output_summary", "failed", "group_id"}
 
 
@@ -76,8 +60,15 @@ def test_replans_when_the_first_restaurant_is_closed(h, monkeypatch):
     assert res["groups"][0]["restaurant"]["name"] != closed_name
 
 
+def test_a_restaurant_with_nothing_on_the_menu_is_skipped(h, monkeypatch):
+    install(monkeypatch, CATALOG, empty={30101, 30103})
+    code, _ = play(h, {n: {"Shawarma Station", "Pizza Piazza", "Sakura Sushi Lab"} for n in "AB"})
+    res = result(h, code)
+    assert res["status"] == "ready" and res["groups"][0]["restaurant"]["name"] == "Sakura Sushi Lab"
+    assert any("nothing to order" in s["output_summary"] for s in res["agent_trace"] if s["failed"])
+
+
 def test_transient_lookup_errors_are_retried(h, monkeypatch):
-    # every restaurant fails twice, then works: retries recover, no re-plan needed
     install(monkeypatch, CATALOG, fail={30101: 2, 30103: 2})
     code, _ = play(h, BOTH)
     res = result(h, code)
@@ -91,7 +82,6 @@ def test_persistent_failure_replans_to_the_next_restaurant(h, monkeypatch):
     install(monkeypatch, CATALOG, fail={30101: -1, 30103: -1})
     code, _ = play(h, {n: {"Shawarma Station", "Pizza Piazza", "Sakura Sushi Lab"} for n in "AB"})
     res = result(h, code)
-    # shortlist has up to 3: the third (sushi) is the only one left standing
     assert res["status"] == "ready" and res["groups"][0]["restaurant"]["name"] == "Sakura Sushi Lab"
     assert sum(1 for s in res["agent_trace"] if s["failed"] and "Giving up" in s["output_summary"]) == 2
 
@@ -115,8 +105,6 @@ def test_total_outage_keeps_the_trace_and_a_readable_message(h, monkeypatch):
 
 
 def test_connection_failure_is_reported_not_crashed(h, monkeypatch):
-    import planner
-
     class Down:
         async def __aenter__(self):
             raise ConnectionRefusedError("sandbox is down")
@@ -131,34 +119,7 @@ def test_connection_failure_is_reported_not_crashed(h, monkeypatch):
     assert any(s["tool"] == "connect" and s["failed"] for s in res["agent_trace"])
 
 
-def test_dishes_with_unresolvable_required_options_are_skipped(h, monkeypatch):
-    # every required option group is empty: dishes that need a choice cannot be ordered, the rest can
-    install(monkeypatch, CATALOG, hollow=True)
-    code, _ = play(h, {n: {"Shawarma Station"} for n in "AB"})
-    res = result(h, code)
-    assert res["status"] == "ready"
-    names = {b["dish_name"] for b in res["basket"]}
-    assert "Chicken Shawarma Wrap" not in names and names <= {"Falafel Plate", "Mixed Grill Platter"}
-    assert all(not b["options"] for b in res["basket"])  # the planner never invents options
-
-
-def test_a_restaurant_with_nothing_orderable_raises_so_the_planner_replans():
-    import pytest
-    from dataclasses import replace
-    import planner
-    from planner import PlanFailed, choose_dishes
-
-    syrniki = CATALOG.by_id(30104)  # both of its dishes need a choice
-    hollow = replace(syrniki, dishes=[replace(d, option_groups=[replace(g, options=[]) for g in d.option_groups]) for d in syrniki.dishes])
-
-    class R:  # the bits of a room choose_dishes reads
-        history = {}
-
-    with pytest.raises(PlanFailed, match="no dishes that can be ordered"):
-        choose_dishes(R(), hollow, ["p1"])
-
-
-def test_dine_out_has_no_basket(h, client):
+def test_dine_out_works_the_same_way(h):
     code, host = h.room(mode="dineout", host="A")
     b = h.join(code, "B")
     h.start_swiping(code, host, "lunch")
@@ -167,11 +128,11 @@ def test_dine_out_has_no_basket(h, client):
     for pid in (host, b):
         h.swipe_all(code, pid, lambda c: c["title"] == "Shawarma Station")
     res = result(h, code)
-    assert res["status"] == "ready" and res["basket"] == [] and res["total_price"] == 0
-    assert res["restaurant"]["name"] == "Shawarma Station" and len(res["per_person"]) == 2
+    assert res["status"] == "ready" and res["basket"] == [] and res["restaurant"]["name"] == "Shawarma Station"
+    assert len(res["per_person"]) == 2
 
 
-def test_split_gives_each_camp_its_own_basket(h):
+def test_split_gives_each_camp_its_own_restaurant(h):
     code, p = play(h, {"A": {"Shawarma Station"}, "B": {"Shawarma Station"}, "C": {"Pizza Piazza"}, "D": {"Pizza Piazza"}})
     for n in "ABC":
         h.c.post(f"/rooms/{code}/dispute/vote", json={"participant_id": p[n], "method": "split"})
@@ -179,12 +140,14 @@ def test_split_gives_each_camp_its_own_basket(h):
     res = result(h, code)
     assert res["resolution"]["type"] == "split" and len(res["groups"]) == 2 and res["restaurant"] is None
     by_name = {g["restaurant"]["name"]: g for g in res["groups"]}
-    assert {b["participant_id"] for b in by_name["Shawarma Station"]["basket"]} == {p["A"], p["B"]}
-    assert {b["participant_id"] for b in by_name["Pizza Piazza"]["basket"]} == {p["C"], p["D"]}
+    assert set(by_name["Shawarma Station"]["participant_ids"]) == {p["A"], p["B"]}
+    assert set(by_name["Pizza Piazza"]["participant_ids"]) == {p["C"], p["D"]}
     assert [g["group_id"] for g in res["groups"]] == ["g1", "g2"]
+    assert all(g["basket"] == [] for g in res["groups"])
+    assert "chose Shawarma Station" in by_name["Shawarma Station"]["reasoning"]
     assert {s["group_id"] for s in res["agent_trace"]} == {"g1", "g2"}
 
 
-def test_planner_never_uses_a_mutating_tool():
-    src = (Path(planner.__file__).read_text(encoding="utf-8"))
-    assert not re.search(r"cart_|checkout|create_order|save_new_address", src)
+def test_the_planner_never_uses_a_mutating_tool():
+    src = Path(planner.__file__).read_text(encoding="utf-8")
+    assert not re.search(r"cart_|checkout|create_order|save_new_address|allow_mutating", src)

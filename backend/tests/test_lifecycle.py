@@ -150,20 +150,8 @@ def test_guests_can_read_the_order_from_the_room(h):
     assert h.state(code, p["B"])["order"] is None
     post(h, f"/rooms/{code}/order", participant_id=p["A"])
     s = h.state(code, p["B"])
-    assert s["stage"] == "ordered" and s["order"]["status"] == "basket_ready"
+    assert s["stage"] == "ordered" and s["order"]["status"] == "go"
     assert s["order"]["groups"][0]["restaurant_link"] and s["order"]["message"]
-
-
-def test_the_user_message_is_clean_and_the_technical_note_is_separate(h, monkeypatch):
-    import order
-    from test_order import FakeCart
-
-    monkeypatch.setattr(order, "CART_FACTORY", lambda: FakeCart("fixed"))
-    code, p = play(h, {n: {"Shawarma Station"} for n in "AB"})
-    assert wait_for(lambda: h.state(code)["stage"] == "result")
-    g = post(h, f"/rooms/{code}/order", participant_id=p["A"]).json()["groups"][0]
-    assert "andbox" not in g["message"] and "estimate" not in g["message"]
-    assert "andbox" in g["note"]
 
 
 # ── CORS and the app ─────────────────────────────────────────────────────────

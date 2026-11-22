@@ -5,17 +5,17 @@ from pathlib import Path
 import agent
 import bedrock_client
 from catalog import Catalog, load_cache
-from fakes import ScriptedBedrock
+from fakes import ScriptedBedrock, install
 from test_dispute import play, wait_for
 
 CATALOG = Catalog(load_cache(), "cache")
 CONSENSUS = {"A": {"Shawarma Station"}, "B": {"Shawarma Station"}, "C": {"Shawarma Station"}, "D": {"Pizza Piazza"}}
 
 
-def run(h, monkeypatch, model):
+def run(h, monkeypatch, model, who=CONSENSUS):
     monkeypatch.setenv("AGENT_MODE", "bedrock")
     monkeypatch.setattr(bedrock_client, "converse", model)
-    code, _ = play(h, CONSENSUS)
+    code, _ = play(h, who)
     assert wait_for(lambda: h.state(code)["stage"] == "result")
     return h.c.get(f"/rooms/{code}/result").json()
 
@@ -24,45 +24,47 @@ def steps(res, tool):
     return [s for s in res["agent_trace"] if s["tool"] == tool]
 
 
-def test_happy_path_uses_the_models_plan(h, monkeypatch):
-    res = run(h, monkeypatch, ScriptedBedrock(CATALOG, "good"))
+def test_happy_path_uses_the_models_choice(h, monkeypatch):
+    model = ScriptedBedrock(CATALOG, "good")
+    res = run(h, monkeypatch, model)
     assert res["status"] == "ready"
     g = res["groups"][0]
-    assert g["reasoning"].endswith("suits everyone.") and all(p["why"] == "Fits your votes." for p in g["per_person"])
+    assert g["restaurant"]["name"] == "Shawarma Station"
+    assert g["reasoning"] == "Shawarma Station suits everyone." and all(p["why"] == "Fits your votes." for p in g["per_person"])
     assert steps(res, "bedrock_agent") and "accepted" in steps(res, "submit_plan")[-1]["output_summary"]
-    # the price is recomputed from the menu, not taken from the model
-    assert g["total_price"] == round(sum(b["price"] for b in g["basket"]), 2) and g["total_price"] > 0
+    assert g["basket"] == [] and model.calls == 2  # look at the restaurant, then submit
     assert not any(s["failed"] for s in res["agent_trace"])
 
 
-def test_restaurant_outside_the_shortlist_is_refused(h, monkeypatch):
+def test_restaurant_outside_the_shortlist_is_refused_when_looking_it_up(h, monkeypatch):
     model = ScriptedBedrock(CATALOG, "outsider")
     res = run(h, monkeypatch, model)
     assert res["status"] == "ready" and model.calls == 3
     assert res["groups"][0]["restaurant"]["id"] != 30105
 
 
-def test_missing_person_is_rejected_then_repaired(h, monkeypatch):
-    model = ScriptedBedrock(CATALOG, "bad_then_good")
-    res = run(h, monkeypatch, model)
+def test_submitting_an_outsider_is_rejected_then_repaired(h, monkeypatch):
+    res = run(h, monkeypatch, ScriptedBedrock(CATALOG, "bad_then_good"))
     rejected = [s for s in steps(res, "submit_plan") if s["failed"]]
-    assert len(rejected) == 1 and "no dish" in rejected[0]["output_summary"]
-    assert res["status"] == "ready" and len(res["groups"][0]["basket"]) == 4
-    assert not steps(res, "replan")
+    assert len(rejected) == 1 and "not on the shortlist" in rejected[0]["output_summary"]
+    assert res["status"] == "ready" and res["groups"][0]["restaurant"]["name"] == "Shawarma Station"
+    assert not steps(res, "replan") and not steps(res, "agent")
 
 
 def test_rejected_twice_falls_back_to_the_planner(h, monkeypatch):
-    res = run(h, monkeypatch, ScriptedBedrock(CATALOG, "missing_person"))
-    assert res["status"] == "ready" and len(res["groups"][0]["basket"]) == 4
+    res = run(h, monkeypatch, ScriptedBedrock(CATALOG, "always_outsider"))
+    assert res["status"] == "ready" and res["groups"][0]["restaurant"]["name"] == "Shawarma Station"
     fb = [s for s in steps(res, "agent") if s["failed"]]
     assert fb and "deterministic planner" in fb[0]["output_summary"]
 
 
-def test_missing_required_option_is_rejected(h, monkeypatch):
-    res = run(h, monkeypatch, ScriptedBedrock(CATALOG, "missing_option"))
+def test_a_closed_restaurant_is_rejected_and_the_planner_moves_on(h, monkeypatch):
+    install(monkeypatch, CATALOG, close_first=True)  # the first restaurant looked up is closed
+    both = {n: {"Shawarma Station", "Pizza Piazza"} for n in "ABC"}
+    res = run(h, monkeypatch, ScriptedBedrock(CATALOG, "first_even_if_closed"), both)
     rejected = [s for s in steps(res, "submit_plan") if s["failed"]]
-    assert rejected and "needs a choice" in rejected[0]["output_summary"]
-    assert res["status"] == "ready"  # planner took over
+    assert rejected and "closed" in rejected[0]["output_summary"]
+    assert res["status"] == "ready"  # never ends on the closed restaurant
 
 
 def test_iteration_cap_then_fallback(h, monkeypatch):
@@ -100,12 +102,12 @@ def test_bedrock_call_has_no_deprecated_temperature(h, monkeypatch):
     assert "temperature" not in seen.get("inferenceConfig", {}) and seen["inferenceConfig"]["maxTokens"] > 0
 
 
-def test_model_only_gets_read_only_tools():
+def test_model_only_gets_read_only_tools_and_cannot_order():
     names = {t["toolSpec"]["name"] for t in agent.TOOLS}
-    assert names == {"get_restaurant_menu", "get_item_options", "submit_plan"}
+    assert names == {"get_restaurant_menu", "submit_plan"}
     src = Path(agent.__file__).read_text(encoding="utf-8")
-    assert not re.search(r"cart_|checkout|create_order|save_new_address", src.replace("never place an order, add to a cart", ""))
-    assert "never place an order" in agent.SYSTEM.lower() or "never places an order" in agent.SYSTEM.lower() or "never place an order" in agent.SYSTEM.lower().replace("you never place", "never place")
+    assert not re.search(r"cart_|checkout|create_order|save_new_address|allow_mutating", src)
+    assert "never order" in agent.SYSTEM.lower()
 
 
 def test_credentials_are_never_cached(monkeypatch, tmp_path):

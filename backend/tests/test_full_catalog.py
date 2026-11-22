@@ -56,10 +56,10 @@ def test_dessert_flow_works_end_to_end(full, h):
     assert wait_for(lambda: h.state(code)["stage"] == "result")
     res = h.c.get(f"/rooms/{code}/result").json()
     assert res["status"] == "ready" and res["restaurant"]["name"] == "Gelato Corner"
-    assert len(res["basket"]) == 2 and all(b["price"] > 0 for b in res["basket"])
+    assert res["basket"] == [] and res["restaurant"]["link"] == "careemfood://restaurants/30108"
 
 
-def test_required_options_are_resolved_for_the_new_menus(full, h):
+def test_a_burger_lunch_ends_at_the_burger_place(full, h):
     code, host = h.room(host="A")
     b = h.join(code, "B")
     h.start_swiping(code, host, "lunch")
@@ -70,5 +70,4 @@ def test_required_options_are_resolved_for_the_new_menus(full, h):
     assert wait_for(lambda: h.state(code)["stage"] == "result")
     res = h.c.get(f"/rooms/{code}/result").json()
     assert res["status"] == "ready" and res["restaurant"]["name"] == "Smash Burger House"
-    burger = [x for x in res["basket"] if x["dish_name"] == "Classic Smash Burger"]
-    assert all(x["options"] == ["Single"] for x in burger)  # the cheapest patty, required choice filled
+    assert res["restaurant"]["link"] == "careemfood://restaurants/30106"

@@ -219,7 +219,7 @@ async def result(code: str):
 
 @app.post("/rooms/{code}/order")
 async def order_endpoint(code: str, body: Actor):
-    """The host's approval. Builds the basket(s); never checks out."""
+    """Host: send everyone to the chosen restaurant (their own, after a split) in Careem to start a group order."""
     return await order.create_orders(rooms.get_room(code), body.participant_id)
 
 

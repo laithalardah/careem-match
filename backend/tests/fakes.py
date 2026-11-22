@@ -3,7 +3,7 @@ import json
 from dataclasses import replace
 
 import planner
-from planner import LookupFailed, cheapest_required_options
+from planner import LookupFailed
 
 
 class FakeGateway:
@@ -11,12 +11,12 @@ class FakeGateway:
 
     cached = False
 
-    def __init__(self, catalog, *, close_first=False, fail=None, hollow=False, wrap_exit=False):
+    def __init__(self, catalog, *, close_first=False, fail=None, empty=(), wrap_exit=False):
         self.catalog = catalog
         self.wrap_exit = wrap_exit  # mimic the MCP session turning escaping exceptions into an ExceptionGroup
         self.close_first, self.closed = close_first, None
         self.fail = dict(fail or {})  # restaurant id -> failures left (-1 = always)
-        self.hollow = hollow  # required option groups with nothing to choose from
+        self.empty = set(empty)  # restaurant ids that are open but have no active dishes
         self.calls = []
 
     async def __aenter__(self):
@@ -39,15 +39,9 @@ class FakeGateway:
             self.closed = rid
         if rid == self.closed:
             return replace(r, available=False)
-        if self.hollow:
-            dishes = [replace(d, option_groups=[replace(g, options=[]) for g in d.option_groups]) for d in r.dishes]
-            return replace(r, dishes=dishes)
+        if rid in self.empty:
+            return replace(r, dishes=[replace(d, active=False) for d in r.dishes])
         return r
-
-    async def options(self, rid, item_ids):
-        self.calls.append(("options", rid))
-        r = await self.menu(rid)
-        return {d.id: d.option_groups for d in r.dishes if d.id in item_ids}
 
 
 def install(monkeypatch, catalog, **kw):
@@ -71,24 +65,17 @@ def tool(name, args, n=1):
 
 
 class ScriptedBedrock:
-    """A fake model. mode: good | outsider | missing_person | missing_option | always_bad | loop | raises"""
+    """A fake model. mode: good | outsider | submit_outsider | bad_then_good | always_outsider | first_even_if_closed | loop | raises"""
 
     def __init__(self, catalog, mode="good", exc=None):
         self.catalog, self.mode, self.exc = catalog, mode, exc
         self.calls = 0
         self.task = None
 
-    def _plan(self, rid, *, drop_last=False, skip_options=False):
+    def _plan(self, rid):
         rest = self.catalog.by_id(rid)
         people = [p["participant_id"] for p in self.task["people"]]
-        if drop_last:
-            people = people[:-1]
-        lines = []
-        for i, pid in enumerate(people):
-            dish = [d for d in rest.dishes if d.active][i % len([d for d in rest.dishes if d.active])]
-            opts = [] if skip_options else [o.catalog_option_id for o in cheapest_required_options(dish, dish.option_groups)]
-            lines.append({"participant_id": pid, "item_id": dish.id, "option_ids": opts})
-        return {"restaurant_id": rid, "lines": lines, "reasoning": f"{rest.name} suits everyone.",
+        return {"restaurant_id": rid, "reasoning": f"{rest.name} suits everyone.",
                 "per_person": [{"participant_id": p, "why": "Fits your votes."} for p in people]}
 
     def __call__(self, messages, **kw):
@@ -101,20 +88,18 @@ class ScriptedBedrock:
         n = self.calls
         if self.mode == "loop":
             return _resp([tool("get_restaurant_menu", {"restaurant_id": first}, n)])
-        if self.mode == "outsider":
+        if self.mode == "outsider":  # looks at a restaurant that is not on the shortlist first
             if n == 1:
-                return _resp([tool("get_restaurant_menu", {"restaurant_id": 30105}, n)])  # not on the shortlist
+                return _resp([tool("get_restaurant_menu", {"restaurant_id": 30105}, n)])
             if n == 2:
                 return _resp([tool("get_restaurant_menu", {"restaurant_id": first}, n)])
             return _resp([tool("submit_plan", self._plan(first), n)])
         if n == 1:
             return _resp([tool("get_restaurant_menu", {"restaurant_id": first}, n)])
-        if self.mode == "good":
+        if self.mode in ("good", "first_even_if_closed"):
             return _resp([tool("submit_plan", self._plan(first), n)])
-        if self.mode == "missing_person":
-            return _resp([tool("submit_plan", self._plan(first, drop_last=True), n)])
-        if self.mode == "missing_option":
-            return _resp([tool("submit_plan", self._plan(first, skip_options=True), n)])
+        if self.mode == "always_outsider":
+            return _resp([tool("submit_plan", self._plan(30105), n)])
         if self.mode == "bad_then_good":
-            return _resp([tool("submit_plan", self._plan(first, drop_last=True) if n == 2 else self._plan(first), n)])
+            return _resp([tool("submit_plan", self._plan(30105) if n == 2 else self._plan(first), n)])
         raise AssertionError(self.mode)

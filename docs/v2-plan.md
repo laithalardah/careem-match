@@ -97,6 +97,17 @@ GET  /health -> {status:"ok", demo:bool}
 ```
 Join link: `{PUBLIC_APP_URL}/#/join/{room_code}`.
 
+### 4a. v2.2: swipe to choose the RESTAURANT only (dishes and baskets are gone)
+After the match (and the wheel or split, if there was a dispute) everyone is sent to the chosen restaurant in Careem to start a
+normal Careem group order and pick their own dishes there. The backend no longer builds baskets, prices, or touches carts.
+- `result.groups[].basket` is always `[]` and `total_price` is `0` (kept so old clients still parse). Show the restaurant, the group's members,
+  `reasoning` and each person's `why`. Do NOT show dishes or prices.
+- The host's button now means "send everyone to the restaurant": `POST /rooms/{code}/order` moves the room to `ordered` and returns
+  `{status:"go", message, groups:[{group_id, status:"go", restaurant_name, restaurant_link, message, price_breakdown:null}]}`.
+  It calls nothing external and needs no approval sheet. After a split there is one group (and one link) per restaurant.
+- `restaurant.link` / `restaurant_link` is a Careem deep link (`careemfood://restaurants/<id>`). It opens the Careem app on a phone that has it;
+  elsewhere copy it. The Careem MCP has no group-order tool, so the host starts the group order inside Careem and shares it.
+- The Bedrock agent only chooses the restaurant from the shortlist (tools: look up the restaurant, submit the choice).
 ### 4b. Details settled while building the backend
 - **Errors**: HTTP 403 (not allowed), 404 (unknown room), 409 (wrong stage / nothing to do), 422 (bad input), always `{"detail": "<readable message>"}`.
 - **Responses**: `swipe` -> `{ok, level_done}`; `demo-friends` -> `{ok, added:[{id,name}]}`; `next`, `settings`, `start`, `dispute/*` -> `{ok:true}`.

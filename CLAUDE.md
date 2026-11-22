@@ -35,6 +35,5 @@ Single source of truth: **docs/v2-plan.md section 4** (the old two-player API is
 stages: lobby -> settings -> swiping -> dispute (only if no consensus) -> matching -> result -> ordered.
 - Backend lives in `backend/` (FastAPI). Run: `DEMO=1 uvicorn main:app --host 0.0.0.0 --port 8000`. Tests: `pytest`.
   Live demo: `python scripts/demo_room.py --scenario consensus|wheel|split [--order]`.
-- Order step: the host's tap is the only approval. Only `cart_add_items` may mutate (allow-list in `order.py`), it is never
-  retried automatically, and checkout / order-placing tools are NEVER called.
+- Swiping chooses the RESTAURANT only (v2.2). After the match everyone is sent to the restaurant in Careem to start a normal group order and pick their own dishes. This backend never orders, never touches a cart and never pays: no mutating MCP tool is used anywhere.
 - Credentials are re-read from `.env` on every Bedrock call (`bedrock_client.py`); refresh them with `refresh_env.ps1`.

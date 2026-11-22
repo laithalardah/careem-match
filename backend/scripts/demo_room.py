@@ -108,9 +108,9 @@ def main():
     print(f"\nRESULT: {res['status']}  resolution={res['resolution']['type']}")
     for g in res["groups"]:
         print(f"\n[{g['group_id']}] {g['restaurant']['name']}  ({', '.join(p['name'] for p in g['per_person'])})")
-        for b in g["basket"]:
-            print(f"   {b['name']:<8} {b['dish_name']:<34} {b['price']:>7.2f} {g['currency']}  {b['options']}")
-        print(f"   total {g['total_price']:.2f} {g['currency']}  | {g['reasoning']}")
+        print(f"   {g['reasoning']}")
+        for p in g["per_person"]:
+            print(f"   - {p['name']}: {p['why']}")
     if res["status"] != "ready":
         print("  ", res["reasoning"])
     print("\nAGENT TRACE")
@@ -118,12 +118,11 @@ def main():
         print(f"  {t['iteration']:>2}. [{t['group_id']}] {'FAILED ' if t['failed'] else ''}{t['tool']}: {t['output_summary']}")
 
     if a.order and res["status"] == "ready":
-        print("\nORDER (host approval; the basket only, no checkout)")
+        print("\nHAND-OFF (host taps continue; everyone is sent to the restaurant in Careem, nothing is ordered here)")
         o = call("POST", f"/rooms/{code}/order", json={"participant_id": host})
         print(f"  {o['status']}: {o['message']}")
         for g in o["groups"]:
-            pb = g.get("price_breakdown") or {}
-            print(f"   {g['group_id']}: {g['status']} total={pb.get('total')} {pb.get('currency', '')} link={g['restaurant_link']}")
+            print(f"   {g['group_id']}: {g['restaurant_name']} -> {g['restaurant_link']}")
             print(f"      {g['message']}")
 
 

@@ -21,14 +21,13 @@ Optional: `FALLBACK=1` (no MCP calls, cached data), `AGENT_MODE=planner` (no Bed
 ```bash
 python scripts/demo_room.py --scenario consensus     # everybody agrees
 python scripts/demo_room.py --scenario wheel         # dispute settled by the wheel
-python scripts/demo_room.py --scenario split --order # dispute split into groups, then the host builds the baskets
+python scripts/demo_room.py --scenario split --order # dispute split into groups, then the host sends everyone to the restaurants
 pytest                                               # 86 tests, offline
 ```
 
 ## Safety
-- Only `cart_add_items` can mutate, only after the host approves, never retried automatically.
-- Checkout and any order-placing tool are never called.
-- The agent only has read-only tools; its plan is re-validated in code; the planner is the fallback.
+- Swiping chooses the restaurant only. After the match everyone is sent to it in Careem (deep link) to start a normal group order; this backend never orders, never uses a cart, never pays.
+- The agent only has read-only tools; its choice is re-validated in code; the planner is the fallback.
 - Credentials are re-read from `.env` on every Bedrock call and never logged.
 
 ## Refresh cached data
