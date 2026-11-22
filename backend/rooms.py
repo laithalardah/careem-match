@@ -49,6 +49,7 @@ class Room:
     result: dict | None = None
     order: dict | None = None
     plans: dict[str, Any] = field(default_factory=dict)  # group_id -> planner.Plan (used by the order step)
+    order_state: dict[str, Any] = field(default_factory=dict)  # group_id -> {"added": {line indexes}} (no double adds)
     forced: dict[str, Any] | None = None  # e.g. {"restaurant_id": 30101} after a wheel spin
     catalog: Catalog | None = None
     history: dict[str, Any] = field(default_factory=dict)  # pid -> history.History

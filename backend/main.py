@@ -17,6 +17,7 @@ import demo
 import dispute
 import engine  # noqa: F401  (registers the matching hook)
 import history
+import order
 import rooms
 from catalog import get_catalog
 from rooms import ApiError
@@ -178,3 +179,9 @@ async def result(code: str):
     if room.result is None:
         raise ApiError(409, "No result yet.")
     return room.result
+
+
+@app.post("/rooms/{code}/order")
+async def order_endpoint(code: str, body: Actor):
+    """The host's approval. Builds the basket(s); never checks out."""
+    return await order.create_orders(rooms.get_room(code), body.participant_id)

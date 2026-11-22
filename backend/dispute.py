@@ -256,7 +256,9 @@ def confirm(room: Room, pid: str) -> None:
 
 # ── Demo friends ─────────────────────────────────────────────────────────────
 def bot_action(room: Room, bot, rng) -> bool:
+    """Demo friends alternate their vote (1st wheel, 2nd split, ...), so the host's vote is always decisive."""
     if bot.id not in room.dispute["method_votes"] and not room.dispute["method"]:
-        cast_vote(room, bot.id, rng.choice(["wheel", "split"]))
+        bots = [p for p in room.participants.values() if p.is_bot]
+        cast_vote(room, bot.id, "wheel" if bots.index(bot) % 2 == 0 else "split")
         return True
     return False
