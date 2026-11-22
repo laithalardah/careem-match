@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design tokens: warm monochrome, 1px borders, near-invisible shadows, pastel accents only for tags.
+/// Design tokens: Careem forest green, bright mint, crisp white/mint-wash sheets, 1px borders.
 class Tok {
-  static const canvas = Color(0xFFFBFBFA);
+  static const careemDark = Color(0xFF0A271E);
+  static const careemGreen = Color(0xFF154E3B);
+  static const careemMid = Color(0xFF1D6A50);
+  static const careemMint = Color(0xFF6FE89F);
+  static const careemMintWash = Color(0xFFECF8F1);
+
+  static const canvas = Color(0xFFF6FBF8);
   static const card = Color(0xFFFFFFFF);
-  static const wash = Color(0xFFF7F6F3);
-  static const border = Color(0xFFEAEAEA);
-  static const ink = Color(0xFF111111);
-  static const inkPressed = Color(0xFF333333);
-  static const secondary = Color(0xFF787774); // 4.5:1+ on canvas
+  static const wash = Color(0xFFF0F7F3);
+  static const border = Color(0xFFDFECE5);
+  static const ink = Color(0xFF0E2A20);
+  static const inkPressed = Color(0xFF1B5240);
+  static const secondary = Color(0xFF536C62); // 4.5:1+ on canvas
 
   // Spacing scale (4/8/12/16/24/32)
   static const s4 = 4.0, s8 = 8.0, s12 = 12.0, s16 = 16.0, s24 = 24.0, s32 = 32.0, s48 = 48.0;
 
-  static const radius = 10.0; // cards
-  static const radiusSm = 6.0; // buttons
+  static const radius = 12.0; // cards
+  static const radiusSm = 8.0; // buttons
 
   /// Desaturated pastel pairs: (background, text).
   static const red = (Color(0xFFFDEBEC), Color(0xFF9F2F2D));
-  static const blue = (Color(0xFFE1F3FE), Color(0xFF1F6C9F));
-  static const green = (Color(0xFFEDF3EC), Color(0xFF346538));
+  static const blue = (Color(0xFFE3F4F1), Color(0xFF14594B));
+  static const green = (Color(0xFFE6F7ED), Color(0xFF13563B));
   static const yellow = (Color(0xFFFBF3DB), Color(0xFF956400));
 
   static const maxWidth = 480.0;
@@ -68,7 +74,7 @@ ThemeData buildTheme() {
     dividerTheme: const DividerThemeData(color: Tok.border, thickness: 1, space: 1),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: Tok.ink,
+        backgroundColor: Tok.careemGreen,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Tok.radiusSm)),
@@ -76,12 +82,13 @@ ThemeData buildTheme() {
         elevation: 0,
       ).copyWith(
         overlayColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.pressed) ? Tok.inkPressed.withValues(alpha: 0.5) : null,
+          (s) => s.contains(WidgetState.pressed) ? Tok.careemDark.withValues(alpha: 0.35) : null,
         ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.white,
         foregroundColor: Tok.ink,
         minimumSize: const Size.fromHeight(52),
         side: const BorderSide(color: Tok.border),

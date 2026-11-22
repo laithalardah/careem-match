@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'api.dart';
 import 'storage.dart';
@@ -81,6 +80,13 @@ class _JoinScreenState extends State<JoinScreen> {
   @override
   Widget build(BuildContext context) {
     return Shell(
+      header: CareemHeaderBar(
+        onBack: () => context.go('/'),
+        backTooltip: 'Back to Careem',
+        title: 'Careem Match',
+        subtitle: 'Room $_code',
+        trailing: widget.api.isMock ? const Tag('Mock backend', colors: Tok.yellow) : null,
+      ),
       footer: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (_error != null) ...[
           ErrorBanner(message: _error!, onClose: () => setState(() => _error = null)),
@@ -92,24 +98,9 @@ class _JoinScreenState extends State<JoinScreen> {
         ),
       ]),
       child: CenteredScroll(children: [
-        Reveal(
-          child: Row(children: [
-            IconButton(
-              tooltip: 'Back to Careem',
-              onPressed: () => context.go('/'),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-              icon: const PhosphorIcon(PhosphorIconsBold.caretLeft, size: 20),
-            ),
-            Tag('Room $_code', colors: Tok.blue),
-            if (widget.api.isMock) ...[
-              const SizedBox(width: Tok.s8),
-              const Tag('Mock backend', colors: Tok.yellow),
-            ],
-          ]),
-        ),
-        const SizedBox(height: Tok.s32),
-        Reveal(delay: 1, child: Text('Join your group.', style: T.display(44))),
+        Reveal(child: Tag('Room $_code', colors: Tok.green)),
+        const SizedBox(height: Tok.s16),
+        Reveal(delay: 1, child: Text('Join your group.', style: T.display(42))),
         const SizedBox(height: Tok.s12),
         Reveal(
           delay: 2,

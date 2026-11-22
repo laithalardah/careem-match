@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'api.dart';
 import 'dispute_screen.dart';
@@ -86,41 +85,26 @@ class _RoomScreenState extends State<RoomScreen> {
         if (!didPop) _confirmLeave();
       },
       child: Shell(
+        header: CareemHeaderBar(
+          onBack: _confirmLeave,
+          backTooltip: 'Leave room',
+          title: 'Careem Match',
+          subtitle: 'Room ${_ctrl.roomCode}',
+          trailing: widget.api.isMock ? const Tag('Mock backend', colors: Tok.yellow) : null,
+        ),
         child: ListenableBuilder(
           listenable: _ctrl,
           builder: (context, _) {
             final room = _ctrl.room;
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                IconButton(
-                  tooltip: 'Leave room',
-                  onPressed: _confirmLeave,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                  icon: const PhosphorIcon(PhosphorIconsBold.caretLeft, size: 20),
-                ),
-                Expanded(
-                  child: Text(
-                    'Match · ${_ctrl.roomCode}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: T.body(size: 14, weight: FontWeight.w600),
-                  ),
-                ),
-                if (widget.api.isMock) ...[
-                  const SizedBox(width: Tok.s8),
-                  const Tag('Mock backend', colors: Tok.yellow),
-                ],
-              ]),
               if (_ctrl.connectionLost) ...[
-                const SizedBox(height: Tok.s8),
                 const ConnectionBanner(),
+                const SizedBox(height: Tok.s8),
               ],
               if (_ctrl.error != null) ...[
-                const SizedBox(height: Tok.s8),
                 ErrorBanner(message: _ctrl.error!, onClose: _ctrl.dismissError),
+                const SizedBox(height: Tok.s8),
               ],
-              const SizedBox(height: Tok.s12),
               Expanded(
                 child: AnimatedSwitcher(
                   duration: reduce ? Duration.zero : const Duration(milliseconds: 250),

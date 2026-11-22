@@ -3,30 +3,141 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'theme.dart';
 
-/// Shell shell: centered column (max 480), safe areas, 24 margins.
+/// Careem-themed shell matching the Hub structure:
+/// dark forest-green gradient header + rounded white-to-mint gradient sheet (max 480).
 class Shell extends StatelessWidget {
-  const Shell({super.key, required this.child, this.footer});
+  const Shell({super.key, required this.child, this.header, this.footer});
   final Widget child;
+  final Widget? header;
   final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: Tok.maxWidth),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(Tok.s24, Tok.s16, Tok.s24, Tok.s24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [Expanded(child: child), if (footer != null) ...[const SizedBox(height: Tok.s16), footer!]],
+      backgroundColor: Tok.careemDark,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: Tok.maxWidth),
+          child: Column(children: [
+            // Careem green gradient top header (same visual structure as HubScreen).
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Tok.careemGreen, Tok.careemDark],
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(Tok.s16, Tok.s12, Tok.s16, header == null ? Tok.s12 : Tok.s16),
+                  child: header ?? const SizedBox(height: 8),
+                ),
               ),
             ),
-          ),
+            // Rounded white-to-soft-mint gradient sheet rising cleanly over the green header.
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.white, Color(0xFFF6FBF8), Color(0xFFEDF8F2)],
+                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(Tok.s24, Tok.s16, Tok.s24, Tok.s24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(child: child),
+                        if (footer != null) ...[const SizedBox(height: Tok.s16), footer!],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ]),
         ),
       ),
     );
+  }
+}
+
+/// Standard Careem green header bar for sub-screens matching HubScreen's chrome.
+class CareemHeaderBar extends StatelessWidget {
+  const CareemHeaderBar({
+    super.key,
+    required this.onBack,
+    required this.backTooltip,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final VoidCallback onBack;
+  final String backTooltip;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Semantics(
+        button: true,
+        label: backTooltip,
+        child: InkWell(
+          onTap: onBack,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const PhosphorIcon(PhosphorIconsBold.caretLeft, size: 20, color: Colors.white),
+          ),
+        ),
+      ),
+      const SizedBox(width: Tok.s12),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            const PhosphorIcon(PhosphorIconsFill.forkKnife, size: 15, color: Tok.careemMint),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: T.body(size: 16, weight: FontWeight.w700, color: Colors.white).copyWith(height: 1.15),
+              ),
+            ),
+          ]),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: T.mono(size: 11.5, color: Tok.careemMint.withValues(alpha: 0.92)),
+            ),
+          ],
+        ]),
+      ),
+      if (trailing != null) ...[const SizedBox(width: Tok.s8), trailing!],
+    ]);
   }
 }
 
