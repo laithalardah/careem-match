@@ -4,7 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'theme.dart';
 
 /// Careem-themed shell matching the Hub structure:
-/// dark forest-green gradient header + rounded white-to-mint gradient sheet (max 480).
+/// dark forest-green gradient header + rounded plain white sheet (max 480).
 class Shell extends StatelessWidget {
   const Shell({super.key, required this.child, this.header, this.footer});
   final Widget child;
@@ -37,16 +37,12 @@ class Shell extends StatelessWidget {
                 ),
               ),
             ),
-            // Rounded white-to-soft-mint gradient sheet rising cleanly over the green header.
+            // Rounded plain white sheet rising over the green header: identical to the home page.
             Expanded(
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.white, Color(0xFFF6FBF8), Color(0xFFEDF8F2)],
-                  ),
+                  color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 clipBehavior: Clip.antiAlias,

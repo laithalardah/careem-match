@@ -105,7 +105,7 @@ class _ModeScreenState extends State<ModeScreen> {
       child: CenteredScroll(children: [
         const Reveal(child: Tag('Start a match', colors: Tok.green)),
         const SizedBox(height: Tok.s12),
-        Reveal(delay: 1, child: Text('How are you\neating tonight?', style: T.display(40))),
+        Reveal(delay: 1, child: Text('How are you\neating tonight?', style: T.display(34))),
         const SizedBox(height: Tok.s8),
         Reveal(
           delay: 2,
@@ -145,7 +145,7 @@ class _ModeScreenState extends State<ModeScreen> {
           child: _ModePhotoCard(
             title: 'Food',
             badge: 'Delivery',
-            subtitle: 'Swipe dishes and restaurants. We build and price one group basket.',
+            subtitle: 'Swipe restaurants together, then start one group order in Careem.',
             photoUrl: _foodPhoto,
             icon: PhosphorIconsBold.bag,
             loading: _creating && _creatingMode == RoomMode.food,
@@ -153,13 +153,13 @@ class _ModeScreenState extends State<ModeScreen> {
             onTap: () => _pickMode(RoomMode.food),
           ),
         ),
-        const SizedBox(height: Tok.s12),
+        const SizedBox(height: Tok.s16),
         Reveal(
           delay: 4,
           child: _ModePhotoCard(
             title: 'Dine Out',
             badge: 'In person',
-            subtitle: 'Agree on one spot to eat out together. No basket, just go there.',
+            subtitle: 'Agree on one spot to eat out together, then head there.',
             photoUrl: _dineOutPhoto,
             icon: PhosphorIconsBold.storefront,
             loading: _creating && _creatingMode == RoomMode.dineout,
@@ -199,10 +199,10 @@ class _ModePhotoCard extends StatelessWidget {
         onTap: disabled ? null : onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 146),
+          constraints: const BoxConstraints(minHeight: 208),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: loading ? Tok.careemMint : Tok.careemGreen.withValues(alpha: 0.25),
               width: loading ? 2 : 1,
@@ -262,48 +262,48 @@ class _ModePhotoCard extends StatelessWidget {
             ),
             // Foreground content.
             Padding(
-              padding: const EdgeInsets.all(Tok.s24),
+              padding: const EdgeInsets.all(Tok.s24 + 2),
               child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                       decoration: BoxDecoration(
                         color: Tok.careemMint,
                         borderRadius: BorderRadius.circular(100),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        PhosphorIcon(icon, size: 12, color: Tok.careemDark),
+                        PhosphorIcon(icon, size: 14, color: Tok.careemDark),
                         const SizedBox(width: 5),
                         Text(
                           badge.toUpperCase(),
-                          style: T.tag(Tok.careemDark).copyWith(fontSize: 10.5),
+                          style: T.tag(Tok.careemDark).copyWith(fontSize: 11.5),
                         ),
                       ]),
                     ),
                     const SizedBox(height: Tok.s12),
                     Text(
                       title,
-                      style: T.display(28).copyWith(color: Colors.white),
+                      style: T.display(44).copyWith(color: Colors.white),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       loading ? 'Creating room...' : subtitle,
-                      style: T.body(size: 13.5, color: Colors.white.withValues(alpha: 0.88)).copyWith(height: 1.35),
+                      style: T.body(size: 15.5, weight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.92)).copyWith(height: 1.35),
                     ),
                   ]),
                 ),
                 const SizedBox(width: Tok.s12),
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 52,
+                  height: 52,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                   ),
-                  child: const PhosphorIcon(PhosphorIconsBold.arrowRight, size: 18, color: Colors.white),
+                  child: const PhosphorIcon(PhosphorIconsBold.arrowRight, size: 22, color: Colors.white),
                 ),
               ]),
             ),

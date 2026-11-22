@@ -311,7 +311,7 @@ class _GroupDetailSection extends StatelessWidget {
         const SizedBox(height: Tok.s8),
         Text(
           group.reasoning,
-          style: T.display(18, style: FontStyle.italic).copyWith(letterSpacing: -0.2, height: 1.35, color: Tok.secondary),
+          style: T.body(size: 16, weight: FontWeight.w500, color: Tok.secondary).copyWith(height: 1.4),
         ),
       ],
       const SizedBox(height: Tok.s16),

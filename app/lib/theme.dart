@@ -32,28 +32,40 @@ class Tok {
   static const maxWidth = 480.0;
 }
 
+/// Type matches the Careem home page: one face (Geist) everywhere, bold and extra-bold for headlines.
+/// (The home page's own biggest headline is 22 pt extra-bold; sizes below are scaled to sit in that range.)
 class T {
-  /// Editorial serif for headings.
-  static TextStyle display(double size, {FontStyle style = FontStyle.normal}) => GoogleFonts.newsreader(
-        fontSize: size,
-        fontWeight: FontWeight.w500,
-        fontStyle: style,
-        height: 1.1,
-        letterSpacing: -0.03 * size,
-        color: Tok.ink,
-      );
+  /// Headlines: same face and weight as the home page ("AED 500 off across 10 orders").
+  /// The `size` argument is the old design size; it is scaled so bold sans headlines are not oversized.
+  static TextStyle display(double size, {FontStyle style = FontStyle.normal}) {
+    final s = size * 0.72;
+    return GoogleFonts.geist(
+      fontSize: s,
+      fontWeight: s >= 20 ? FontWeight.w800 : FontWeight.w700,
+      height: 1.16,
+      letterSpacing: -0.02 * s,
+      color: Tok.ink,
+    );
+  }
 
   static TextStyle body({double size = 16, FontWeight weight = FontWeight.w400, Color color = Tok.ink}) =>
       GoogleFonts.geist(fontSize: size, fontWeight: weight, height: 1.5, color: color);
 
   static TextStyle secondary({double size = 15}) => body(size: size, color: Tok.secondary);
 
-  static TextStyle mono({double size = 12, Color color = Tok.secondary}) =>
-      GoogleFonts.geistMono(fontSize: size, height: 1.5, color: color);
+  /// Numbers, counters and room codes: the same face with aligned digits (the home page has no monospace).
+  static TextStyle mono({double size = 12, Color color = Tok.secondary}) => GoogleFonts.geist(
+        fontSize: size,
+        fontWeight: FontWeight.w600,
+        height: 1.5,
+        letterSpacing: 0.2,
+        color: color,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
 
-  /// Tiny uppercase tag text.
+  /// Small badge text, as the home page's "New" and discount badges (bold, tight).
   static TextStyle tag(Color color) =>
-      GoogleFonts.geist(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.55, height: 1.2, color: color);
+      GoogleFonts.geist(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.5, height: 1.2, color: color);
 }
 
 ThemeData buildTheme() {
