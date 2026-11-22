@@ -215,7 +215,7 @@ class _DishCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(child: FoodImage(url: dish.imageUrl, seed: dish.cuisine, iconSize: 56)),
+        Expanded(child: FoodImage(url: dish.imageUrl, seed: dish.cuisine, label: dish.name, iconSize: 56)),
         Padding(
           padding: const EdgeInsets.all(Tok.s24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -84,33 +84,84 @@ class Panel extends StatelessWidget {
       );
 }
 
-/// Network image with a tinted, icon-based fallback (catalog images may not load offline).
+/// Network image with a verified dish-photo fallback (when sandbox CDN URLs 400)
+/// and a tinted, cuisine-aware icon fallback when offline.
 class FoodImage extends StatelessWidget {
-  const FoodImage({super.key, required this.url, required this.seed, this.height, this.iconSize = 40});
+  const FoodImage({super.key, required this.url, required this.seed, this.label, this.height, this.iconSize = 40});
   final String? url;
   final String seed;
+  final String? label;
   final double? height;
   final double iconSize;
+
+  static IconData _iconFor(String key) {
+    final k = key.toLowerCase();
+    if (k.contains('coffee') || k.contains('cappuccino') || k.contains('breakfast')) return PhosphorIconsBold.coffee;
+    if (k.contains('pizza') || k.contains('italian')) return PhosphorIconsBold.pizza;
+    if (k.contains('sushi') || k.contains('salmon') || k.contains('japanese')) return PhosphorIconsBold.fish;
+    if (k.contains('bowl') || k.contains('healthy') || k.contains('salad')) return PhosphorIconsBold.bowlFood;
+    if (k.contains('grill') || k.contains('shawarma') || k.contains('arabic')) return PhosphorIconsBold.fire;
+    return PhosphorIconsBold.forkKnife;
+  }
+
+  static String? _fallbackPhoto(String? label, String seed) {
+    final q = '${label ?? ''} $seed'.toLowerCase();
+    if (q.contains('syrniki') || q.contains('morning') || q.contains('breakfast')) {
+      return 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=800&q=80';
+    }
+    if (q.contains('cappuccino') || q.contains('coffee') || q.contains('latte')) {
+      return 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=800&q=80';
+    }
+    if (q.contains('sushi') || q.contains('salmon') || q.contains('sakura')) {
+      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80';
+    }
+    if (q.contains('katsu') || q.contains('bento') || q.contains('japanese')) {
+      return 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&q=80';
+    }
+    if (q.contains('pepperoni')) {
+      return 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=800&q=80';
+    }
+    if (q.contains('margherita') || q.contains('pizza') || q.contains('italian')) {
+      return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80';
+    }
+    if (q.contains('shawarma')) {
+      return 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&q=80';
+    }
+    if (q.contains('falafel')) {
+      return 'https://images.unsplash.com/photo-1547058881-aa0edd92aab3?w=800&q=80';
+    }
+    if (q.contains('grill') || q.contains('arabic')) {
+      return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80';
+    }
+    if (q.contains('bowl') || q.contains('caesar') || q.contains('healthy') || q.contains('green')) {
+      return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80';
+    }
+    return null;
+  }
+
+  Widget _net(String src, Widget onErr, Widget placeholder) => Image.network(
+        src,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        excludeFromSemantics: true,
+        errorBuilder: (_, _, _) => onErr,
+        loadingBuilder: (_, child, p) => p == null ? child : placeholder,
+      );
 
   @override
   Widget build(BuildContext context) {
     final c = pastelFor(seed);
-    final fallback = Container(
+    final iconPlaceholder = Container(
       height: height,
       color: c.$1,
       alignment: Alignment.center,
-      child: PhosphorIcon(PhosphorIconsBold.forkKnife, size: iconSize, color: c.$2),
+      child: PhosphorIcon(_iconFor('${label ?? ''} $seed'), size: iconSize, color: c.$2),
     );
-    if (url == null) return fallback;
-    return Image.network(
-      url!,
-      height: height,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      excludeFromSemantics: true,
-      errorBuilder: (_, _, _) => fallback,
-      loadingBuilder: (_, child, p) => p == null ? child : fallback,
-    );
+    final backup = _fallbackPhoto(label, seed);
+    final secondary = backup == null ? iconPlaceholder : _net(backup, iconPlaceholder, iconPlaceholder);
+    if (url == null || url!.isEmpty) return secondary;
+    return _net(url!, secondary, iconPlaceholder);
   }
 }
 
