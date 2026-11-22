@@ -1,0 +1,420 @@
+{
+ "restaurants": [
+  {
+   "id": 30101,
+   "name": "Shawarma Station",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/shawarma-station-hero.jpg",
+   "cuisines": [
+    "Arabic",
+    "Shawarma"
+   ],
+   "category": "Shawarma",
+   "rating": 4.6,
+   "eta_minutes": 25,
+   "link": "careemfood://restaurants/30101",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700101",
+     "name": "Chicken Shawarma Wrap",
+     "description": "Marinated chicken, garlic toum, pickles and fries wrapped in saj bread.",
+     "price": 18.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700101.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 81011,
+       "name": "Choose your size",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 810111,
+         "group_id": 81011,
+         "catalog_option_id": "81011::810111",
+         "name": "Regular",
+         "price": 0.0
+        },
+        {
+         "id": 810112,
+         "group_id": 81011,
+         "catalog_option_id": "81011::810112",
+         "name": "Large",
+         "price": 6.0
+        }
+       ]
+      },
+      {
+       "id": 81012,
+       "name": "Extras",
+       "required": false,
+       "min": 0,
+       "max": 2,
+       "multi": true,
+       "options": [
+        {
+         "id": 810121,
+         "group_id": 81012,
+         "catalog_option_id": "81012::810121",
+         "name": "Extra garlic sauce",
+         "price": 2.0
+        },
+        {
+         "id": 810122,
+         "group_id": 81012,
+         "catalog_option_id": "81012::810122",
+         "name": "No pickles",
+         "price": 0.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700102",
+     "name": "Falafel Plate",
+     "description": "Six crispy falafel with hummus, tahini, salad and pita.",
+     "price": 22.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700102.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700103",
+     "name": "Mixed Grill Platter",
+     "description": "Shish tawook, kofta and lamb tikka with grilled vegetables and rice.",
+     "price": 65.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700103.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30103,
+   "name": "Pizza Piazza",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/pizza-piazza-hero.jpg",
+   "cuisines": [
+    "Italian",
+    "Pizza"
+   ],
+   "category": "Pizza",
+   "rating": 4.5,
+   "eta_minutes": 30,
+   "link": "careemfood://restaurants/30103",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700301",
+     "name": "Margherita Pizza",
+     "description": "San Marzano tomato, fior di latte mozzarella and fresh basil.",
+     "price": 39.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700301.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 83011,
+       "name": "Choose your size",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 830111,
+         "group_id": 83011,
+         "catalog_option_id": "83011::830111",
+         "name": "Medium",
+         "price": 0.0
+        },
+        {
+         "id": 830112,
+         "group_id": 83011,
+         "catalog_option_id": "83011::830112",
+         "name": "Large",
+         "price": 12.0
+        }
+       ]
+      },
+      {
+       "id": 83012,
+       "name": "Choose your crust",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 830121,
+         "group_id": 83012,
+         "catalog_option_id": "83012::830121",
+         "name": "Classic",
+         "price": 0.0
+        },
+        {
+         "id": 830122,
+         "group_id": 83012,
+         "catalog_option_id": "83012::830122",
+         "name": "Thin",
+         "price": 0.0
+        }
+       ]
+      },
+      {
+       "id": 83013,
+       "name": "Extra toppings",
+       "required": false,
+       "min": 0,
+       "max": 3,
+       "multi": true,
+       "options": [
+        {
+         "id": 830131,
+         "group_id": 83013,
+         "catalog_option_id": "83013::830131",
+         "name": "Mushrooms",
+         "price": 4.0
+        },
+        {
+         "id": 830132,
+         "group_id": 83013,
+         "catalog_option_id": "83013::830132",
+         "name": "Black olives",
+         "price": 3.0
+        },
+        {
+         "id": 830133,
+         "group_id": 83013,
+         "catalog_option_id": "83013::830133",
+         "name": "Extra mozzarella",
+         "price": 6.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700302",
+     "name": "Pepperoni Pizza",
+     "description": "Tomato sauce, mozzarella and spicy beef pepperoni.",
+     "price": 46.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700302.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30102,
+   "name": "Sakura Sushi Lab",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/sakura-sushi-lab-hero.jpg",
+   "cuisines": [
+    "Japanese",
+    "Sushi"
+   ],
+   "category": "Sushi",
+   "rating": 4.4,
+   "eta_minutes": 40,
+   "link": "careemfood://restaurants/30102",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700201",
+     "name": "Salmon Avocado Roll (8 pcs)",
+     "description": "Fresh salmon, avocado and cucumber, topped with sesame.",
+     "price": 42.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700201.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700202",
+     "name": "Chicken Katsu Bento",
+     "description": "Panko chicken katsu, steamed rice, salad and miso soup.",
+     "price": 48.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700202.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30104,
+   "name": "Morning Syrniki Café",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/morning-syrniki-cafe-hero.jpg",
+   "cuisines": [
+    "Breakfast",
+    "Eastern European"
+   ],
+   "category": "Breakfast",
+   "rating": 4.8,
+   "eta_minutes": 25,
+   "link": "careemfood://restaurants/30104",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700401",
+     "name": "Classic Syrniki with Sour Cream",
+     "description": "Four golden cottage-cheese pancakes served with your choice of topping.",
+     "price": 34.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700401.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 84011,
+       "name": "Choose your topping",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 840111,
+         "group_id": 84011,
+         "catalog_option_id": "84011::840111",
+         "name": "Sour cream",
+         "price": 0.0
+        },
+        {
+         "id": 840112,
+         "group_id": 84011,
+         "catalog_option_id": "84011::840112",
+         "name": "Berry jam",
+         "price": 0.0
+        },
+        {
+         "id": 840113,
+         "group_id": 84011,
+         "catalog_option_id": "84011::840113",
+         "name": "Condensed milk",
+         "price": 0.0
+        }
+       ]
+      },
+      {
+       "id": 84012,
+       "name": "Add-ons",
+       "required": false,
+       "min": 0,
+       "max": 2,
+       "multi": true,
+       "options": [
+        {
+         "id": 840121,
+         "group_id": 84012,
+         "catalog_option_id": "84012::840121",
+         "name": "Extra sour cream",
+         "price": 4.0
+        },
+        {
+         "id": 840122,
+         "group_id": 84012,
+         "catalog_option_id": "84012::840122",
+         "name": "Fresh berries",
+         "price": 6.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700402",
+     "name": "Cappuccino",
+     "description": "Double-shot espresso with steamed milk foam.",
+     "price": 19.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700402.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 84021,
+       "name": "Choose your milk",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 840211,
+         "group_id": 84021,
+         "catalog_option_id": "84021::840211",
+         "name": "Full cream",
+         "price": 0.0
+        },
+        {
+         "id": 840212,
+         "group_id": 84021,
+         "catalog_option_id": "84021::840212",
+         "name": "Oat",
+         "price": 3.0
+        },
+        {
+         "id": 840213,
+         "group_id": 84021,
+         "catalog_option_id": "84021::840213",
+         "name": "Almond",
+         "price": 3.0
+        }
+       ]
+      },
+      {
+       "id": 84022,
+       "name": "Choose your size",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 840221,
+         "group_id": 84022,
+         "catalog_option_id": "84022::840221",
+         "name": "Regular",
+         "price": 0.0
+        },
+        {
+         "id": 840222,
+         "group_id": 84022,
+         "catalog_option_id": "84022::840222",
+         "name": "Large",
+         "price": 4.0
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 30105,
+   "name": "Green Bowl Co.",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/green-bowl-co-hero.jpg",
+   "cuisines": [
+    "Healthy",
+    "Salads"
+   ],
+   "category": "Healthy",
+   "rating": 4.3,
+   "eta_minutes": 30,
+   "link": "careemfood://restaurants/30105",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700501",
+     "name": "Chicken Caesar Bowl",
+     "description": "Grilled chicken, romaine, parmesan, croutons and Caesar dressing.",
+     "price": 38.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700501.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  }
+ ]
+}

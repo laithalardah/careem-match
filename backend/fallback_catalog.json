@@ -94,6 +94,108 @@
    ]
   },
   {
+   "id": 30106,
+   "name": "Smash Burger House",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/smash-burger-house-hero.jpg",
+   "cuisines": [
+    "Burgers",
+    "American"
+   ],
+   "category": "Burger",
+   "rating": 4.5,
+   "eta_minutes": 30,
+   "link": "careemfood://restaurants/30106",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700601",
+     "name": "Classic Smash Burger",
+     "description": "Two smashed beef patties, cheddar, pickles and house sauce in a brioche bun.",
+     "price": 32.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700601.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 90611,
+       "name": "Choose your patty",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 906111,
+         "group_id": 90611,
+         "catalog_option_id": "90611::906111",
+         "name": "Single",
+         "price": 0.0
+        },
+        {
+         "id": 906112,
+         "group_id": 90611,
+         "catalog_option_id": "90611::906112",
+         "name": "Double",
+         "price": 9.0
+        }
+       ]
+      },
+      {
+       "id": 90612,
+       "name": "Add-ons",
+       "required": false,
+       "min": 0,
+       "max": 2,
+       "multi": true,
+       "options": [
+        {
+         "id": 906121,
+         "group_id": 90612,
+         "catalog_option_id": "90612::906121",
+         "name": "Extra cheese",
+         "price": 3.0
+        },
+        {
+         "id": 906122,
+         "group_id": 90612,
+         "catalog_option_id": "90612::906122",
+         "name": "Crispy bacon",
+         "price": 5.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700602",
+     "name": "Spicy Chicken Burger",
+     "description": "Crispy chicken thigh, jalapeno slaw and chipotle mayo.",
+     "price": 29.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700602.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700603",
+     "name": "Loaded Fries",
+     "description": "Fries with cheese sauce, jalapenos and crispy onions.",
+     "price": 15.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700603.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700604",
+     "name": "Onion Rings",
+     "description": "Beer-batter onion rings with ranch dip.",
+     "price": 12.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700604.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
    "id": 30103,
    "name": "Pizza Piazza",
    "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/pizza-piazza-hero.jpg",
@@ -413,6 +515,546 @@
      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700501.jpg",
      "active": true,
      "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30107,
+   "name": "Sweet Tooth Bakery",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/sweet-tooth-bakery-hero.jpg",
+   "cuisines": [
+    "Dessert",
+    "Bakery"
+   ],
+   "category": "Dessert",
+   "rating": 4.7,
+   "eta_minutes": 35,
+   "link": "careemfood://restaurants/30107",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700701",
+     "name": "Kunafa with Cheese",
+     "description": "Warm shredded kunafa filled with sweet cheese, finished with syrup.",
+     "price": 24.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700701.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700702",
+     "name": "Chocolate Lava Cake",
+     "description": "Molten chocolate centre, served warm.",
+     "price": 28.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700702.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 90721,
+       "name": "Add a scoop",
+       "required": false,
+       "min": 0,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 907211,
+         "group_id": 90721,
+         "catalog_option_id": "90721::907211",
+         "name": "Vanilla ice cream",
+         "price": 5.0
+        },
+        {
+         "id": 907212,
+         "group_id": 90721,
+         "catalog_option_id": "90721::907212",
+         "name": "Pistachio ice cream",
+         "price": 6.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700703",
+     "name": "Cheesecake Slice",
+     "description": "Creamy baked cheesecake with berry compote.",
+     "price": 22.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700703.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700704",
+     "name": "Baklava Box (12 pcs)",
+     "description": "Assorted pistachio and walnut baklava.",
+     "price": 35.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700704.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30108,
+   "name": "Gelato Corner",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/gelato-corner-hero.jpg",
+   "cuisines": [
+    "Gelato",
+    "Dessert"
+   ],
+   "category": "Dessert",
+   "rating": 4.4,
+   "eta_minutes": 20,
+   "link": "careemfood://restaurants/30108",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700801",
+     "name": "Pistachio Gelato Cup",
+     "description": "Slow-churned pistachio gelato.",
+     "price": 18.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700801.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 90811,
+       "name": "Choose your size",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 908111,
+         "group_id": 90811,
+         "catalog_option_id": "90811::908111",
+         "name": "Small",
+         "price": 0.0
+        },
+        {
+         "id": 908112,
+         "group_id": 90811,
+         "catalog_option_id": "90811::908112",
+         "name": "Medium",
+         "price": 4.0
+        },
+        {
+         "id": 908113,
+         "group_id": 90811,
+         "catalog_option_id": "90811::908113",
+         "name": "Large",
+         "price": 7.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700802",
+     "name": "Mango Sorbet",
+     "description": "Dairy-free mango sorbet.",
+     "price": 16.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700802.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700803",
+     "name": "Waffle with Chocolate",
+     "description": "Hot waffle with chocolate sauce and hazelnuts.",
+     "price": 26.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700803.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30111,
+   "name": "Mandi Palace",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/mandi-palace-hero.jpg",
+   "cuisines": [
+    "Arabic",
+    "Mandi"
+   ],
+   "category": "Shawarma",
+   "rating": 4.8,
+   "eta_minutes": 35,
+   "link": "careemfood://restaurants/30111",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "701101",
+     "name": "Chicken Mandi",
+     "description": "Slow-cooked chicken over spiced rice with a tomato chilli sauce.",
+     "price": 38.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701101.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 91111,
+       "name": "Choose your rice",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 911111,
+         "group_id": 91111,
+         "catalog_option_id": "91111::911111",
+         "name": "Plain rice",
+         "price": 0.0
+        },
+        {
+         "id": 911112,
+         "group_id": 91111,
+         "catalog_option_id": "91111::911112",
+         "name": "Saffron rice",
+         "price": 4.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "701102",
+     "name": "Lamb Mansaf",
+     "description": "Lamb in jameed yogurt sauce over rice, topped with almonds and pine nuts.",
+     "price": 45.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701102.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "701103",
+     "name": "Mutabbal & Bread",
+     "description": "Smoky aubergine dip with warm bread.",
+     "price": 14.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701103.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30110,
+   "name": "Wok Express",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/wok-express-hero.jpg",
+   "cuisines": [
+    "Asian",
+    "Chinese"
+   ],
+   "category": "Asian",
+   "rating": 4.3,
+   "eta_minutes": 30,
+   "link": "careemfood://restaurants/30110",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "701001",
+     "name": "Chicken Chow Mein",
+     "description": "Stir-fried noodles with chicken, cabbage and spring onion.",
+     "price": 30.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701001.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 91011,
+       "name": "Choose your noodles",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 910111,
+         "group_id": 91011,
+         "catalog_option_id": "91011::910111",
+         "name": "Egg noodles",
+         "price": 0.0
+        },
+        {
+         "id": 910112,
+         "group_id": 91011,
+         "catalog_option_id": "91011::910112",
+         "name": "Rice noodles",
+         "price": 2.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "701002",
+     "name": "Beef & Broccoli",
+     "description": "Tender beef and broccoli in oyster sauce, with steamed rice.",
+     "price": 38.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701002.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "701003",
+     "name": "Vegetable Spring Rolls (6)",
+     "description": "Crispy rolls with sweet chilli dip.",
+     "price": 18.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701003.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30109,
+   "name": "Sunrise Foul & Falafel",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/sunrise-foul-and-falafel-hero.jpg",
+   "cuisines": [
+    "Breakfast",
+    "Arabic"
+   ],
+   "category": "Breakfast",
+   "rating": 4.6,
+   "eta_minutes": 20,
+   "link": "careemfood://restaurants/30109",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "700901",
+     "name": "Foul Medames",
+     "description": "Slow-cooked fava beans with olive oil, lemon and cumin, served with bread.",
+     "price": 14.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700901.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700902",
+     "name": "Hummus Plate",
+     "description": "Creamy hummus with olive oil and warm pita.",
+     "price": 16.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700902.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "700903",
+     "name": "Shakshuka Pan",
+     "description": "Eggs poached in spiced tomato sauce.",
+     "price": 24.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700903.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 90931,
+       "name": "Choose your spice",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 909311,
+         "group_id": 90931,
+         "catalog_option_id": "90931::909311",
+         "name": "Mild",
+         "price": 0.0
+        },
+        {
+         "id": 909312,
+         "group_id": 90931,
+         "catalog_option_id": "90931::909312",
+         "name": "Hot",
+         "price": 0.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "700904",
+     "name": "Falafel Sandwich",
+     "description": "Crispy falafel, tahini, pickles and tomato in saj bread.",
+     "price": 10.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/700904.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30112,
+   "name": "Napoli Slice",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/napoli-slice-hero.jpg",
+   "cuisines": [
+    "Italian",
+    "Pizza"
+   ],
+   "category": "Pizza",
+   "rating": 4.2,
+   "eta_minutes": 25,
+   "link": "careemfood://restaurants/30112",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "701201",
+     "name": "Pepperoni Slice Combo",
+     "description": "Two pepperoni slices with a drink.",
+     "price": 24.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701201.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 91211,
+       "name": "Choose your drink",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 912111,
+         "group_id": 91211,
+         "catalog_option_id": "91211::912111",
+         "name": "Cola",
+         "price": 0.0
+        },
+        {
+         "id": 912112,
+         "group_id": 91211,
+         "catalog_option_id": "91211::912112",
+         "name": "Orange soda",
+         "price": 0.0
+        },
+        {
+         "id": 912113,
+         "group_id": 91211,
+         "catalog_option_id": "91211::912113",
+         "name": "Water",
+         "price": 0.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "701202",
+     "name": "Four Cheese Pizza",
+     "description": "Mozzarella, gorgonzola, parmesan and provolone.",
+     "price": 44.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701202.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 91221,
+       "name": "Choose your size",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 912211,
+         "group_id": 91221,
+         "catalog_option_id": "91221::912211",
+         "name": "Medium",
+         "price": 0.0
+        },
+        {
+         "id": 912212,
+         "group_id": 91221,
+         "catalog_option_id": "91221::912212",
+         "name": "Large",
+         "price": 10.0
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": "701203",
+     "name": "Garlic Bread",
+     "description": "Toasted ciabatta with garlic butter.",
+     "price": 14.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701203.jpg",
+     "active": true,
+     "option_groups": []
+    }
+   ]
+  },
+  {
+   "id": 30113,
+   "name": "Fresh Greens",
+   "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/fresh-greens-hero.jpg",
+   "cuisines": [
+    "Healthy",
+    "Salads"
+   ],
+   "category": "Healthy",
+   "rating": 4.5,
+   "eta_minutes": 25,
+   "link": "careemfood://restaurants/30113",
+   "currency": "AED",
+   "available": true,
+   "dishes": [
+    {
+     "id": "701301",
+     "name": "Quinoa Power Bowl",
+     "description": "Quinoa, roasted veg, chickpeas, avocado and lemon tahini.",
+     "price": 36.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701301.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "701302",
+     "name": "Greek Salad",
+     "description": "Cucumber, tomato, olives, feta and oregano dressing.",
+     "price": 28.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701302.jpg",
+     "active": true,
+     "option_groups": []
+    },
+    {
+     "id": "701303",
+     "name": "Grilled Chicken Light Wrap",
+     "description": "Grilled chicken, greens and yogurt dressing.",
+     "price": 30.0,
+     "image_url": "https://careem-catalog-media.media.careem.com/food/items/701303.jpg",
+     "active": true,
+     "option_groups": [
+      {
+       "id": 91331,
+       "name": "Choose your bread",
+       "required": true,
+       "min": 1,
+       "max": 1,
+       "multi": false,
+       "options": [
+        {
+         "id": 913311,
+         "group_id": 91331,
+         "catalog_option_id": "91331::913311",
+         "name": "Whole wheat",
+         "price": 0.0
+        },
+        {
+         "id": 913312,
+         "group_id": 91331,
+         "catalog_option_id": "91331::913312",
+         "name": "Low-carb",
+         "price": 3.0
+        }
+       ]
+      }
+     ]
     }
    ]
   }

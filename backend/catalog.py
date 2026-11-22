@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -15,10 +16,18 @@ from pathlib import Path
 import config
 
 log = logging.getLogger("catalog")
-CATALOG_PATH = Path(__file__).parent / "fallback_catalog.json"
+DEFAULT_CATALOG_PATH = Path(__file__).parent / "fallback_catalog.json"
+
+
+def cache_path() -> Path:
+    """The cached catalog file. CATALOG_PATH lets tests use a frozen, smaller catalog."""
+    return Path(os.getenv("CATALOG_PATH") or DEFAULT_CATALOG_PATH)
+
+
 # Amman, Jordan. (Sandbox data is Dubai/AED and is selected by restaurant id.)
 LOCATION = {"latitude": 31.9539, "longitude": 35.9106}
-DISCOVERY_QUERIES = ["shawarma", "burger", "pizza", "sushi", "breakfast", "bowl", "syrniki", "dessert"]
+DISCOVERY_QUERIES = ["shawarma", "burger", "pizza", "sushi", "breakfast", "bowl", "syrniki", "dessert",
+                     "gelato", "mandi", "noodles", "foul", "slice", "salad"]
 
 # Cuisine name from the MCP -> the category card shown to people.
 CATEGORY_BY_CUISINE = {
@@ -28,12 +37,14 @@ CATEGORY_BY_CUISINE = {
     "Burgers": "Burger", "Burger": "Burger", "American": "Burger",
     "Breakfast": "Breakfast", "Eastern European": "Breakfast", "Cafe": "Breakfast",
     "Healthy": "Healthy", "Salads": "Healthy",
-    "Dessert": "Dessert", "Desserts": "Dessert", "Bakery": "Dessert", "Sweets": "Dessert",
+    "Dessert": "Dessert", "Desserts": "Dessert", "Bakery": "Dessert", "Sweets": "Dessert", "Gelato": "Dessert",
+    "Asian": "Asian", "Chinese": "Asian", "Noodles": "Asian", "Thai": "Asian",
+    "Mandi": "Shawarma",
 }
 MEAL_CATEGORIES = {
     "breakfast": {"Breakfast", "Healthy"},
-    "lunch": {"Shawarma", "Healthy", "Pizza", "Sushi", "Burger"},
-    "dinner": {"Shawarma", "Pizza", "Sushi", "Healthy", "Burger"},
+    "lunch": {"Shawarma", "Healthy", "Pizza", "Sushi", "Burger", "Asian"},
+    "dinner": {"Shawarma", "Pizza", "Sushi", "Healthy", "Burger", "Asian"},
     "dessert": {"Dessert"},
 }
 
@@ -220,11 +231,11 @@ async def fetch_live() -> list[Restaurant]:
 
 
 def load_cache() -> list[Restaurant]:
-    return [_from_dict(d) for d in json.loads(CATALOG_PATH.read_text(encoding="utf-8"))["restaurants"]]
+    return [_from_dict(d) for d in json.loads(cache_path().read_text(encoding="utf-8"))["restaurants"]]
 
 
 def save_cache(restaurants: list[Restaurant]) -> None:
-    CATALOG_PATH.write_text(
+    cache_path().write_text(
         json.dumps({"restaurants": [asdict(r) for r in restaurants]}, indent=1, ensure_ascii=False), encoding="utf-8"
     )
 
@@ -261,7 +272,7 @@ if __name__ == "__main__":
     if "--refresh" in sys.argv:
         rs = asyncio.run(fetch_live())
         save_cache(rs)
-        print(f"{len(rs)} restaurants cached -> {CATALOG_PATH.name}")
+        print(f"{len(rs)} restaurants cached -> {cache_path().name}")
         for r in rs:
             print(f"  {r.id} {r.name:<24} {r.category:<10} {r.rating} eta={r.eta_minutes} dishes={len(r.dishes)} open={r.available}")
     else:

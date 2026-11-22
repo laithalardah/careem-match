@@ -7,6 +7,8 @@ os.environ["DEMO"] = "1"
 os.environ["BOT_MIN_DELAY"] = "0"
 os.environ["BOT_MAX_DELAY"] = "0"
 os.environ["WHEEL_DURATION_MS"] = "40"
+# The offline tests use a frozen 5-restaurant catalog so they do not change when the sandbox grows.
+os.environ["CATALOG_PATH"] = os.path.join(os.path.dirname(__file__), "fixtures", "catalog_small.json")
 os.environ["WEB_DIR"] = os.path.join(os.path.dirname(__file__), "web_stub")
 os.environ["WHEEL_REVEAL_PAUSE_MS"] = "40"
 
