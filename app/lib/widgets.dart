@@ -206,3 +206,110 @@ class Reveal extends StatelessWidget {
     );
   }
 }
+
+String money(double v, String cur) => '${v.toStringAsFixed(2)} ${cur.isEmpty ? 'JOD' : cur}';
+
+/// Distinct pastel avatar with Phosphor crown above the host everywhere participants appear.
+class ParticipantAvatar extends StatelessWidget {
+  const ParticipantAvatar({
+    super.key,
+    required this.id,
+    required this.name,
+    this.isHost = false,
+    this.size = 38,
+  });
+
+  final String id;
+  final String name;
+  final bool isHost;
+  final double size;
+
+  String get _initials {
+    final parts = name.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = pastelFor('$id:$name');
+    final avatar = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.$1,
+        shape: BoxShape.circle,
+        border: Border.all(color: c.$2.withValues(alpha: 0.25)),
+      ),
+      child: Text(
+        _initials,
+        style: T.body(size: size * 0.38, weight: FontWeight.w700, color: c.$2).copyWith(height: 1.0),
+      ),
+    );
+
+    return Semantics(
+      label: isHost ? '$name, host' : name,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 14,
+            child: isHost
+                ? const PhosphorIcon(PhosphorIconsFill.crown, size: 13, color: Color(0xFF956400))
+                : null,
+          ),
+          avatar,
+        ],
+      ),
+    );
+  }
+}
+
+/// Warm monochrome skeleton block (used instead of blocking spinners).
+class SkeletonBox extends StatelessWidget {
+  const SkeletonBox({super.key, this.width, required this.height, this.radius = Tok.radiusSm});
+  final double? width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Tok.wash,
+          borderRadius: BorderRadius.circular(radius),
+          border: Border.all(color: Tok.border),
+        ),
+      );
+}
+
+/// Non-blocking banner shown after 3 consecutive failed room polls.
+class ConnectionBanner extends StatelessWidget {
+  const ConnectionBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        liveRegion: true,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: Tok.s12, vertical: Tok.s8),
+          decoration: BoxDecoration(
+            color: Tok.yellow.$1,
+            borderRadius: BorderRadius.circular(Tok.radiusSm),
+            border: Border.all(color: Tok.yellow.$2.withValues(alpha: 0.2)),
+          ),
+          child: Row(children: [
+            PhosphorIcon(PhosphorIconsBold.wifiSlash, size: 16, color: Tok.yellow.$2),
+            const SizedBox(width: Tok.s8),
+            Expanded(
+              child: Text(
+                'Reconnecting to room. Changes will sync once back online.',
+                style: T.body(size: 13, color: Tok.yellow.$2).copyWith(height: 1.3),
+              ),
+            ),
+          ]),
+        ),
+      );
+}

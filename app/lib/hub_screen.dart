@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import 'flow.dart';
 import 'theme.dart';
 
 /// Main screen of the host app (Careem-style super app). Every picture is an asset slot
@@ -50,8 +49,8 @@ class SlotImage extends StatelessWidget {
 }
 
 class HubScreen extends StatelessWidget {
-  const HubScreen({super.key, required this.flow});
-  final GameFlow flow;
+  const HubScreen({super.key, required this.onOpenMatch});
+  final VoidCallback onOpenMatch;
 
   @override
   Widget build(BuildContext context) {
@@ -107,11 +106,11 @@ class HubScreen extends StatelessWidget {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: ListView(padding: const EdgeInsets.only(top: Tok.s16, bottom: Tok.s32), children: [
-                  _ServiceGrid(flow: flow),
+                  _ServiceGrid(onOpenMatch: onOpenMatch),
                   const SizedBox(height: Tok.s16),
                   const _QuickRow(),
                   const SizedBox(height: Tok.s16),
-                  _MatchBanner(flow: flow),
+                  _MatchBanner(onOpenMatch: onOpenMatch),
                   const SizedBox(height: Tok.s12),
                   const _PlusBanner(),
                   const SizedBox(height: Tok.s24),
@@ -137,8 +136,8 @@ class _Service {
 }
 
 class _ServiceGrid extends StatelessWidget {
-  const _ServiceGrid({required this.flow});
-  final GameFlow flow;
+  const _ServiceGrid({required this.onOpenMatch});
+  final VoidCallback onOpenMatch;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +150,7 @@ class _ServiceGrid extends StatelessWidget {
     ];
     final row2 = [
       // Our feature lives here.
-      _Service('Match', 'match', PhosphorIconsBold.heart, badge: 'New', isNew: true, onTap: flow.openMatch),
+      _Service('Match', 'match', PhosphorIconsBold.heart, badge: 'New', isNew: true, onTap: onOpenMatch),
       _Service('Hala Taxi', 'hala_taxi', PhosphorIconsBold.taxi),
       _Service('Box', 'box', PhosphorIconsBold.package),
       _Service('Electronics', 'electronics', PhosphorIconsBold.headphones),
@@ -351,8 +350,8 @@ class _PlusBanner extends StatelessWidget {
 
 /// Entry banner for our feature — Careem-themed flagship promo card.
 class _MatchBanner extends StatelessWidget {
-  const _MatchBanner({required this.flow});
-  final GameFlow flow;
+  const _MatchBanner({required this.onOpenMatch});
+  final VoidCallback onOpenMatch;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -361,7 +360,7 @@ class _MatchBanner extends StatelessWidget {
           button: true,
           label: 'Careem Match. Can\'t agree on dinner? Swipe dishes with a friend and get one restaurant you both want.',
           child: InkWell(
-            onTap: flow.openMatch,
+            onTap: onOpenMatch,
             borderRadius: BorderRadius.circular(16),
             child: Container(
               clipBehavior: Clip.antiAlias,
