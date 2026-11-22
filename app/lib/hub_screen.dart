@@ -302,7 +302,7 @@ class _PlusBanner extends StatelessWidget {
               gradient: const LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [_C.bannerBg, _C.bannerBgEnd],
+                colors: [Color(0xFF5A6360), Color(0xFF727B78)],
               ),
               borderRadius: BorderRadius.circular(14),
             ),
@@ -311,10 +311,10 @@ class _PlusBanner extends StatelessWidget {
               Row(children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(color: _C.badgeText, borderRadius: BorderRadius.circular(6)),
+                  decoration: BoxDecoration(color: const Color(0xFFE4E8E6), borderRadius: BorderRadius.circular(6)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const PhosphorIcon(PhosphorIconsFill.smiley, size: 13, color: _C.bannerBg),
-                    Text('+', style: T.body(size: 12, weight: FontWeight.w800, color: _C.bannerBg).copyWith(height: 1.0)),
+                    const PhosphorIcon(PhosphorIconsFill.smiley, size: 13, color: Color(0xFF5A6360)),
+                    Text('+', style: T.body(size: 12, weight: FontWeight.w800, color: const Color(0xFF5A6360)).copyWith(height: 1.0)),
                   ]),
                 ),
                 const SizedBox(width: Tok.s8),
@@ -325,7 +325,7 @@ class _PlusBanner extends StatelessWidget {
                 Text.rich(
                   TextSpan(children: [
                     TextSpan(text: 'Get ', style: T.body(size: 14, weight: FontWeight.w700, color: Colors.white).copyWith(height: 1.25)),
-                    TextSpan(text: '10% back on Hala Taxi', style: T.body(size: 14, weight: FontWeight.w700, color: _C.badgeText).copyWith(height: 1.25)),
+                    TextSpan(text: '10% back on Hala Taxi', style: T.body(size: 14, weight: FontWeight.w700, color: const Color(0xFFE4E8E6)).copyWith(height: 1.25)),
                   ]),
                 ),
                 const SizedBox(height: 3),
