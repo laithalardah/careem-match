@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +8,7 @@ import 'room_controller.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-/// Steps 5, 6, 7: Level 1 (categories) -> interstitial -> Level 2 (restaurants) + Waiting screen.
+/// Steps 5, 6, 7: Level 1 (categories) -> Level 2 (restaurants) + Waiting screen.
 class RoomSwipeView extends StatefulWidget {
   const RoomSwipeView({super.key, required this.ctrl});
   final RoomController ctrl;
@@ -20,37 +18,6 @@ class RoomSwipeView extends StatefulWidget {
 }
 
 class _RoomSwipeViewState extends State<RoomSwipeView> {
-  SwipeLevel? _seenLevel;
-  bool _showInterstitial = false;
-  Timer? _interstitialTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _seenLevel = widget.ctrl.room?.level;
-  }
-
-  @override
-  void didUpdateWidget(covariant RoomSwipeView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final cur = widget.ctrl.room?.level;
-    if (_seenLevel == SwipeLevel.category && cur == SwipeLevel.restaurant) {
-      _seenLevel = cur;
-      setState(() => _showInterstitial = true);
-      _interstitialTimer?.cancel();
-      _interstitialTimer = Timer(const Duration(milliseconds: 1100), () {
-        if (mounted) setState(() => _showInterstitial = false);
-      });
-    } else if (cur != null) {
-      _seenLevel = cur;
-    }
-  }
-
-  @override
-  void dispose() {
-    _interstitialTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +26,6 @@ class _RoomSwipeViewState extends State<RoomSwipeView> {
     final me = widget.ctrl.me;
     final done = me?.progress.done == true && me?.progress.level == level;
 
-    if (_showInterstitial) {
-      return _LevelInterstitial(
-        onContinue: () {
-          _interstitialTimer?.cancel();
-          setState(() => _showInterstitial = false);
-        },
-      );
-    }
 
     if (done) {
       return WaitingOthersView(ctrl: widget.ctrl, level: level);
@@ -103,29 +62,6 @@ class _RoomSwipeViewState extends State<RoomSwipeView> {
   }
 }
 
-class _LevelInterstitial extends StatelessWidget {
-  const _LevelInterstitial({required this.onContinue});
-  final VoidCallback onContinue;
-
-  @override
-  Widget build(BuildContext context) {
-    return CenteredScroll(children: [
-      const Reveal(child: Tag('Level 2 of 2', colors: Tok.green)),
-      const SizedBox(height: Tok.s24),
-      Reveal(delay: 1, child: Text('Now pick\nrestaurants.', style: T.display(46))),
-      const SizedBox(height: Tok.s12),
-      Reveal(
-        delay: 2,
-        child: Text(
-          'Narrowed down from your group\'s favorite categories.',
-          style: T.secondary(size: 16),
-        ),
-      ),
-      const SizedBox(height: Tok.s32),
-      FilledButton(onPressed: onContinue, child: const Text('Start swiping')),
-    ]);
-  }
-}
 
 class _SwipeSkeleton extends StatelessWidget {
   const _SwipeSkeleton();
