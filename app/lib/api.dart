@@ -345,7 +345,7 @@ class MockApi implements Api {
       'eta_minutes': 32,
       'image_url': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80',
       'top_dishes': ['Salmon Avocado Roll (8 pcs)', 'Chicken Katsu Bento', 'Miso Soup'],
-      'careem_plus': true,
+      'discount_pct': 75, 'careem_plus': true,
     },
     {
       'id': '30104',
@@ -369,7 +369,7 @@ class MockApi implements Api {
       'eta_minutes': 22,
       'image_url': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
       'top_dishes': ['Chicken Caesar Bowl', 'Avocado Quinoa Salad', 'Green Glow Juice'],
-      'careem_plus': true,
+      'discount_pct': 69, 'careem_plus': true,
     },
     {
       'id': '30106',

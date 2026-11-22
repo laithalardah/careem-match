@@ -26,8 +26,8 @@ def cache_path() -> Path:
 
 # Amman, Jordan. (Sandbox data is Dubai/AED and is selected by restaurant id.)
 LOCATION = {"latitude": 31.9539, "longitude": 35.9106}
-# Demo-only promotions (the sandbox has none): percent off by restaurant id; None = no discount.
-DEMO_DISCOUNTS = (None, 25, None, 40, 60, None, 35, 50)
+# Demo-only promotions (the sandbox has none): percent off by restaurant id (every restaurant has one).
+DEMO_DISCOUNTS = (69, 25, 75, 40, 60, 50, 35, 45)
 
 DISCOVERY_QUERIES = ["shawarma", "burger", "pizza", "sushi", "breakfast", "bowl", "syrniki", "dessert",
                      "gelato", "mandi", "noodles", "foul", "slice", "salad"]
