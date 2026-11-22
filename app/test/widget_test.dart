@@ -7,6 +7,7 @@ import 'package:careem_match/main.dart';
 import 'package:careem_match/models.dart';
 import 'package:careem_match/room_controller.dart';
 import 'package:careem_match/storage.dart';
+import 'package:careem_match/widgets.dart';
 
 void _setMobileViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(430, 900);
@@ -428,5 +429,43 @@ void main() {
     await ctrl.retryResult(); // next poll flushes the pending swipe
     expect(await hostSwipes(), 1);
     ctrl.dispose();
+  });
+
+  test('every catalog restaurant, category, and unknown MCP restaurant resolves to a real photo URL', () {
+    const catalogRestaurants = [
+      ('Shawarma Station', 'Shawarma'),
+      ('Smash Burger House', 'Burger'),
+      ('Pizza Piazza', 'Pizza'),
+      ('Sakura Sushi Lab', 'Sushi'),
+      ('Morning Syrniki Café', 'Breakfast'),
+      ('Green Bowl Co.', 'Healthy'),
+      ('Sweet Tooth Bakery', 'Dessert'),
+      ('Gelato Corner', 'Dessert'),
+      ('Mandi Palace', 'Shawarma'),
+      ('Wok Express', 'Asian'),
+      ('Sunrise Foul & Falafel', 'Breakfast'),
+      ('Napoli Slice', 'Pizza'),
+      ('Fresh Greens', 'Healthy'),
+    ];
+    final seenPhotos = <String>{};
+    for (final (name, cuisine) in catalogRestaurants) {
+      final resolved = FoodImage.primaryUrl(
+        'https://careem-catalog-media.media.careem.com/food/restaurants/${name.toLowerCase()}.jpg',
+        label: name,
+        seed: cuisine,
+      );
+      expect(resolved, startsWith('https://images.unsplash.com/'));
+      seenPhotos.add(resolved);
+    }
+    // Every single one of the 13 sandbox restaurants gets its own distinct photo.
+    expect(seenPhotos.length, catalogRestaurants.length);
+
+    // Unknown live MCP restaurant with null image_url still gets a verified fallback photo.
+    final unknown = FoodImage.primaryUrl(null, label: 'Mystery Kitchen Amman', seed: 'Local');
+    expect(unknown, startsWith('https://images.unsplash.com/'));
+
+    // A live non-sandbox MCP image URL is preserved as primary.
+    final live = FoodImage.primaryUrl('https://cdn.careem.com/live/hero.jpg', label: 'Live Spot', seed: 'Food');
+    expect(live, 'https://cdn.careem.com/live/hero.jpg');
   });
 }

@@ -208,8 +208,8 @@ class Panel extends StatelessWidget {
       );
 }
 
-/// Network image with a verified dish-photo fallback (when sandbox CDN URLs 400)
-/// and a tinted, cuisine-aware icon fallback when offline.
+/// Network image with verified restaurant/dish photo fallbacks (when MCP URLs are
+/// missing, null, or dead sandbox CDN links) and a cuisine-aware icon placeholder offline.
 class FoodImage extends StatelessWidget {
   const FoodImage({super.key, required this.url, required this.seed, this.label, this.height, this.iconSize = 40});
   final String? url;
@@ -218,49 +218,108 @@ class FoodImage extends StatelessWidget {
   final double? height;
   final double iconSize;
 
+  static const _deadSandboxHost = 'careem-catalog-media.media.careem.com';
+
+  static const _generalPool = [
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900&q=80',
+    'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=900&q=80',
+    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=900&q=80',
+    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=900&q=80',
+  ];
+
   static IconData _iconFor(String key) {
     final k = key.toLowerCase();
+    if (k.contains('burger')) return PhosphorIconsBold.hamburger;
     if (k.contains('coffee') || k.contains('cappuccino') || k.contains('breakfast')) return PhosphorIconsBold.coffee;
-    if (k.contains('pizza') || k.contains('italian')) return PhosphorIconsBold.pizza;
+    if (k.contains('pizza') || k.contains('italian') || k.contains('napoli')) return PhosphorIconsBold.pizza;
     if (k.contains('sushi') || k.contains('salmon') || k.contains('japanese')) return PhosphorIconsBold.fish;
-    if (k.contains('bowl') || k.contains('healthy') || k.contains('salad')) return PhosphorIconsBold.bowlFood;
-    if (k.contains('grill') || k.contains('shawarma') || k.contains('arabic')) return PhosphorIconsBold.fire;
+    if (k.contains('dessert') || k.contains('bakery') || k.contains('gelato') || k.contains('sweet')) return PhosphorIconsBold.cookie;
+    if (k.contains('bowl') || k.contains('healthy') || k.contains('salad') || k.contains('greens')) return PhosphorIconsBold.bowlFood;
+    if (k.contains('grill') || k.contains('shawarma') || k.contains('mandi') || k.contains('arabic')) return PhosphorIconsBold.fire;
     return PhosphorIconsBold.forkKnife;
   }
 
-  static String? _fallbackPhoto(String? label, String seed) {
+  /// Always returns a verified real food/restaurant photo URL for any restaurant, dish, or category.
+  static String fallbackPhoto({String? label, required String seed}) {
     final q = '${label ?? ''} $seed'.toLowerCase();
-    if (q.contains('syrniki') || q.contains('morning') || q.contains('breakfast')) {
-      return 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=800&q=80';
+
+    // Specific sandbox restaurants & dishes first so every card gets its own distinct photo.
+    if (q.contains('napoli') || q.contains('pepperoni') || q.contains('slice')) {
+      return 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=900&q=80';
     }
-    if (q.contains('cappuccino') || q.contains('coffee') || q.contains('latte')) {
-      return 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=800&q=80';
+    if (q.contains('pizza') || q.contains('margherita') || q.contains('italian')) {
+      return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=900&q=80';
     }
-    if (q.contains('sushi') || q.contains('salmon') || q.contains('sakura')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80';
+    if (q.contains('burger') || q.contains('smash') || q.contains('american')) {
+      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=900&q=80';
     }
-    if (q.contains('katsu') || q.contains('bento') || q.contains('japanese')) {
-      return 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&q=80';
+    if (q.contains('gelato') || q.contains('sorbet') || q.contains('ice cream')) {
+      return 'https://images.unsplash.com/photo-1567206563064-6f60f40a2b57?w=900&q=80';
     }
-    if (q.contains('pepperoni')) {
-      return 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=800&q=80';
+    if (q.contains('sweet tooth') || q.contains('bakery') || q.contains('kunafa') || q.contains('baklava') || q.contains('cake') || q.contains('dessert') || q.contains('sweets')) {
+      return 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=900&q=80';
     }
-    if (q.contains('margherita') || q.contains('pizza') || q.contains('italian')) {
-      return 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80';
+    if (q.contains('mandi') || q.contains('mansaf') || q.contains('biryani') || q.contains('kabsa')) {
+      return 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=900&q=80';
+    }
+    if (q.contains('wok') || q.contains('chow mein') || q.contains('noodle') || q.contains('chinese') || q.contains('asian') || q.contains('thai')) {
+      return 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=900&q=80';
+    }
+    if (q.contains('ramen')) {
+      return 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=900&q=80';
+    }
+    if (q.contains('sunrise') || q.contains('foul') || q.contains('falafel') || q.contains('hummus') || q.contains('shakshuka')) {
+      return 'https://images.unsplash.com/photo-1547058881-aa0edd92aab3?w=900&q=80';
+    }
+    if (q.contains('syrniki') || q.contains('morning') || q.contains('breakfast') || q.contains('pancake') || q.contains('brunch')) {
+      return 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=900&q=80';
+    }
+    if (q.contains('cappuccino') || q.contains('coffee') || q.contains('latte') || q.contains('cafe')) {
+      return 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=900&q=80';
+    }
+    if (q.contains('sushi') || q.contains('salmon') || q.contains('sakura') || q.contains('maki')) {
+      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=900&q=80';
+    }
+    if (q.contains('katsu') || q.contains('bento') || q.contains('japanese') || q.contains('chicken')) {
+      return 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=900&q=80';
+    }
+    if (q.contains('fresh greens') || q.contains('quinoa') || q.contains('greek') || q.contains('salad')) {
+      return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=900&q=80';
+    }
+    if (q.contains('green bowl') || q.contains('bowl') || q.contains('caesar') || q.contains('healthy')) {
+      return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=900&q=80';
     }
     if (q.contains('shawarma')) {
-      return 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&q=80';
+      return 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=900&q=80';
     }
-    if (q.contains('falafel')) {
-      return 'https://images.unsplash.com/photo-1547058881-aa0edd92aab3?w=800&q=80';
+    if (q.contains('grill') || q.contains('kebab') || q.contains('arabic') || q.contains('lebanese')) {
+      return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=900&q=80';
     }
-    if (q.contains('grill') || q.contains('arabic')) {
-      return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80';
+    if (q.contains('pasta') || q.contains('spaghetti') || q.contains('risotto')) {
+      return 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=900&q=80';
     }
-    if (q.contains('bowl') || q.contains('caesar') || q.contains('healthy') || q.contains('green')) {
-      return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80';
+    if (q.contains('taco') || q.contains('burrito') || q.contains('mexican')) {
+      return 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=900&q=80';
     }
-    return null;
+    if (q.contains('steak') || q.contains('bbq') || q.contains('ribs')) {
+      return 'https://images.unsplash.com/photo-1544025162-d76694265947?w=900&q=80';
+    }
+    if (q.contains('curry') || q.contains('indian') || q.contains('tikka') || q.contains('masala')) {
+      return 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=900&q=80';
+    }
+
+    // Guaranteed deterministic photo fallback so NO restaurant is ever left without an image.
+    final hash = q.codeUnits.fold(0, (a, b) => a + b);
+    return _generalPool[hash % _generalPool.length];
+  }
+
+  /// Picks the primary URL to load: live MCP image if usable, otherwise the verified fallback photo immediately.
+  static String primaryUrl(String? url, {String? label, required String seed}) {
+    final trimmed = url?.trim() ?? '';
+    final usable = trimmed.isNotEmpty &&
+        (trimmed.startsWith('http://') || trimmed.startsWith('https://')) &&
+        !trimmed.contains(_deadSandboxHost);
+    return usable ? trimmed : fallbackPhoto(label: label, seed: seed);
   }
 
   Widget _net(String src, Widget onErr, Widget placeholder) => Image.network(
@@ -282,10 +341,11 @@ class FoodImage extends StatelessWidget {
       alignment: Alignment.center,
       child: PhosphorIcon(_iconFor('${label ?? ''} $seed'), size: iconSize, color: c.$2),
     );
-    final backup = _fallbackPhoto(label, seed);
-    final secondary = backup == null ? iconPlaceholder : _net(backup, iconPlaceholder, iconPlaceholder);
-    if (url == null || url!.isEmpty) return secondary;
-    return _net(url!, secondary, iconPlaceholder);
+    final backup = fallbackPhoto(label: label, seed: seed);
+    final primary = primaryUrl(url, label: label, seed: seed);
+    final backupWidget = _net(backup, iconPlaceholder, iconPlaceholder);
+    if (primary == backup) return backupWidget;
+    return _net(primary, backupWidget, iconPlaceholder);
   }
 }
 
