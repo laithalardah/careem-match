@@ -25,6 +25,13 @@ class HomeScreen extends StatelessWidget {
       child: CenteredScroll(children: [
         Reveal(
           child: Row(children: [
+            IconButton(
+              tooltip: 'Back to Careem',
+              onPressed: flow.goHub,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              icon: const PhosphorIcon(PhosphorIconsBold.caretLeft, size: 20),
+            ),
             const PhosphorIcon(PhosphorIconsFill.forkKnife, size: 18),
             const SizedBox(width: Tok.s8),
             Text('Careem Match', style: T.body(size: 14, weight: FontWeight.w600)),

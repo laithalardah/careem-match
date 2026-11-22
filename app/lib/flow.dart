@@ -5,16 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'api.dart';
 import 'models.dart';
 
-enum Phase { home, swipe1, handoff, swipe2, running, result }
+enum Phase { hub, home, swipe1, handoff, swipe2, running, result }
 
-/// One game session: home -> player 1 swipes -> handoff -> player 2 swipes -> agent runs -> result.
+/// hub (Careem-style main screen) -> home (Match intro) -> player 1 swipes -> handoff ->
+/// player 2 swipes -> agent runs -> result.
 class GameFlow extends ChangeNotifier {
   GameFlow(this.api);
   final Api api;
 
   static const location = 'Amman, Jordan';
 
-  Phase phase = Phase.home;
+  Phase phase = Phase.hub;
   String? sessionId;
   List<Dish> dishes = const [];
   MatchResult? result;
@@ -113,7 +114,7 @@ class GameFlow extends ChangeNotifier {
   void reset() {
     _poll?.cancel();
     _set(() {
-      phase = Phase.home;
+      phase = Phase.home; // back to the Match intro, one tap from a new game
       result = null;
       error = null;
       sessionId = null;
@@ -121,6 +122,18 @@ class GameFlow extends ChangeNotifier {
   }
 
   void dismissError() => _set(() => error = null);
+
+  /// Open Careem Match from the hub tile.
+  void openMatch() => _set(() => phase = Phase.home);
+
+  /// Leave Careem Match and go back to the main screen.
+  void goHub() {
+    _poll?.cancel();
+    _set(() {
+      phase = Phase.hub;
+      error = null;
+    });
+  }
 
   @override
   void dispose() {

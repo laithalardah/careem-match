@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'flow.dart';
+import 'hub_screen.dart';
 import 'screens.dart';
 import 'swipe_screen.dart';
 import 'theme.dart';
@@ -45,6 +46,7 @@ class _CareemMatchAppState extends State<CareemMatchApp> {
   }
 
   Widget _screen() => switch (flow.phase) {
+        Phase.hub => HubScreen(flow: flow),
         Phase.home => HomeScreen(flow: flow),
         Phase.swipe1 => SwipeScreen(player: 1, dishes: flow.dishes, onSwipe: (d, l) => flow.swipe(1, d, l), onDone: flow.finishPlayer1),
         Phase.handoff => HandoffScreen(flow: flow),
