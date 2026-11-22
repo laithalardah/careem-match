@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 import config
 import demo
+import dispute
 import engine  # noqa: F401  (registers the matching hook)
 import history
 import rooms
@@ -137,6 +138,37 @@ async def cards(code: str, participant_id: str):
 @app.post("/rooms/{code}/swipe")
 async def swipe(code: str, body: Swipe):
     return rooms.swipe(rooms.get_room(code), body.participant_id, body.level, body.card_id, body.liked)
+
+
+# ── Disputes ─────────────────────────────────────────────────────────────────
+@app.post("/rooms/{code}/dispute/start")
+async def dispute_start(code: str, body: Actor):
+    dispute.start_early(rooms.get_room(code), body.participant_id)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/dispute/vote")
+async def dispute_vote(code: str, body: Vote):
+    dispute.cast_vote(rooms.get_room(code), body.participant_id, body.method)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/dispute/spin")
+async def dispute_spin(code: str, body: Actor):
+    dispute.spin(rooms.get_room(code), body.participant_id)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/dispute/move")
+async def dispute_move(code: str, body: Move):
+    dispute.move(rooms.get_room(code), body.participant_id, body.restaurant_id)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/dispute/confirm")
+async def dispute_confirm(code: str, body: Actor):
+    dispute.confirm(rooms.get_room(code), body.participant_id)
+    return {"ok": True}
 
 
 # ── Result ───────────────────────────────────────────────────────────────────

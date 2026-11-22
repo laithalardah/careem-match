@@ -48,6 +48,8 @@ Steps:
 - **Spin the wheel**: server draws the winner (weighted by supporters, `secrets` module), so all devices land on the same slice. Clients animate from `spin_started_at_ms`, `duration_ms`, `final_angle_deg`. Winner is forced into the agent, which then builds the basket for everyone.
 - **Split**: one group per bloc. Neutral people go to the bloc with their highest utility. Anyone can move themselves until the host confirms. The agent runs once per group; the result has one basket per group and the host's order creates one basket per restaurant (still no checkout).
 
+**Wheel geometry (front end and back end must agree):** slices start at the TOP (0 deg) and run CLOCKWISE in the order of `wheel.segments`; each slice spans `weight / sum(weights) * 360` degrees. `final_angle_deg` (0..360) is the clockwise rotation of the wheel at rest that puts the winner's slice under the fixed pointer at the top. Animate from 0 to `final_angle_deg + 360 * turns` over `duration_ms`. `wheel` exists (with null spin fields) as soon as the method is `wheel`; after the host spins, `spin_id`, `spin_started_at_ms`, `final_angle_deg` and `winner_restaurant_id` are filled in. The server moves the room to `matching` about `duration_ms` + 2 s after the spin.
+
 **Demo friends** (`DEMO=1`): `POST /rooms/{code}/demo-friends` adds 1-4 bots with names, taste personas and seeded history (labelled demo). Bots swipe with 1.5-4 s delays, vote on the dispute method and join groups on their own. Scenario `dispute` picks personas that split the group, `consensus` picks matching tastes.
 
 ## 4. API v2.1 (single source of truth)

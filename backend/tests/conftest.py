@@ -6,6 +6,8 @@ os.environ["AGENT_MODE"] = "planner"
 os.environ["DEMO"] = "1"
 os.environ["BOT_MIN_DELAY"] = "0"
 os.environ["BOT_MAX_DELAY"] = "0"
+os.environ["WHEEL_DURATION_MS"] = "40"
+os.environ["WHEEL_REVEAL_PAUSE_MS"] = "40"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
