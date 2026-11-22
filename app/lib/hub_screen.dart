@@ -14,8 +14,6 @@ class _C {
   static const matchBorder = Color(0xFF1B6B4F);
   static const badge = Color(0xFF164336);
   static const badgeText = Color(0xFF6FE89F);
-  static const bannerBg = Color(0xFF143E33);
-  static const bannerBgEnd = Color(0xFF1C5344);
   static const discount = Color(0xFFB84755);
   static const cream = Color(0xFFF7F4EE);
 }
