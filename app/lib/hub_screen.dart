@@ -145,7 +145,7 @@ class _ServiceGrid extends StatelessWidget {
       _Service('Food', 'food', PhosphorIconsBold.hamburger, badge: 'Plus Week'),
       _Service('Quik', 'quik', PhosphorIconsBold.basket, badge: 'AED 500 Off'),
       _Service('Pay', 'pay', PhosphorIconsBold.coins),
-      _Service('Flowers', 'flowers', PhosphorIconsBold.flower),
+      _Service('DineOut', 'dineout', PhosphorIconsBold.forkKnife),
     ];
     final row2 = [
       // Our feature lives here.
@@ -196,7 +196,7 @@ class _Tile extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.fromLTRB(6, 14, 6, 10),
                     child: Column(children: [
-                      Expanded(child: SlotImage(s.image, icon: s.icon, size: 56)),
+                      Expanded(child: SlotImage(s.image, icon: s.icon, size: 68)),
                       const SizedBox(height: 6),
                       Text(s.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.body(size: 13, weight: FontWeight.w700)),
                     ]),
