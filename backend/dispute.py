@@ -60,13 +60,14 @@ def evaluate(room: Room) -> Outcome:
 
     thr = config.consensus_threshold()
     agreed = [r for r in ranked if not r.vetoed_by and r.likes / n >= thr]
+    liked = [r for r in ranked if r.likes > 0]  # never shortlist a place nobody liked
     if agreed:
-        rest, _ = scoring.shortlist([r for r in ranked if r not in agreed])
+        rest, _ = scoring.shortlist([r for r in liked if r not in agreed])
         return Outcome("consensus", ranked, (agreed + [r for r in rest if r not in agreed])[:3])
 
     contenders = _contenders(ranked, sig)
     if len(contenders) < 2:  # everyone's favourite is the same place, it just fell short of the bar
-        short, _ = scoring.shortlist(ranked)
+        short, _ = scoring.shortlist(liked)
         first = contenders[0]["ranked"] if contenders else short[0]
         return Outcome("consensus", ranked, [first] + [r for r in short if r is not first][:2], compromise=True)
     return Outcome("dispute", ranked, contenders=contenders)

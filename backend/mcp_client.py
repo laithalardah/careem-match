@@ -69,7 +69,14 @@ class Careem:
         return await list_tools(self._session)
 
     async def call(self, name, args, allow_mutating=False):
-        return await call_tool(self._session, name, args, allow_mutating)
+        # List the tools once per connection (the mutating guard needs them), not on every call.
+        if not hasattr(self, "_tools"):
+            self._tools = {t["name"]: t for t in await list_tools(self._session)}
+        if name not in self._tools:
+            raise ValueError(f"unknown tool: {name}")
+        if self._tools[name]["mutating"] and not allow_mutating:
+            raise PermissionError(f"{name} is mutating; refusing without explicit approval")
+        return await self._session.call_tool(name, args)
 
 
 async def _main():

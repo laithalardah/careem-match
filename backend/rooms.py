@@ -48,6 +48,7 @@ class Room:
     dispute: dict | None = None
     result: dict | None = None
     order: dict | None = None
+    plans: dict[str, Any] = field(default_factory=dict)  # group_id -> planner.Plan (used by the order step)
     forced: dict[str, Any] | None = None  # e.g. {"restaurant_id": 30101} after a wheel spin
     catalog: Catalog | None = None
     history: dict[str, Any] = field(default_factory=dict)  # pid -> history.History
