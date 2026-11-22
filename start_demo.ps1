@@ -11,8 +11,8 @@
 #   -Port 8000      change the port
 #   -Ip 192.168.1.5 use this address instead of the detected one (e.g. a hotspot)
 #   -SkipBuild      do not rebuild the app
-#   -NoDemo         turn demo friends off
-param([int]$Port = 8000, [string]$Ip = '', [switch]$SkipBuild, [switch]$NoDemo)
+#   -Demo           turn ON demo friends (bots). Off by default: only real people can join.
+param([int]$Port = 8000, [string]$Ip = '', [switch]$SkipBuild, [switch]$Demo)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
@@ -49,7 +49,7 @@ if (-not $SkipBuild -and -not $built) {
 
 # 4. backend + app
 $env:PUBLIC_APP_URL = $base
-$env:DEMO = if ($NoDemo) { '0' } else { '1' }
+$env:DEMO = if ($Demo) { '1' } else { '0' }
 Write-Host ''
 Write-Host "  Open on this computer:   $base" -ForegroundColor Green
 Write-Host "  Friends on the same Wi-Fi open the same address (or scan the QR in the lobby)." -ForegroundColor Green
