@@ -197,15 +197,11 @@ void main() {
     expect(find.textContaining('AED'), findsNothing);
     expect(find.textContaining('JOD'), findsNothing);
 
-    // Scroll to Why this one & Agent trace, expand trace and verify failed call + re-plan visibility.
+    // "Why this one" is there; the agent trace is no longer shown on the result page.
     final listScroll = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
-    await tester.scrollUntilVisible(find.text('Agent trace'), 250, scrollable: listScroll);
+    await tester.scrollUntilVisible(find.text('Why this one'), 250, scrollable: listScroll);
     expect(find.text('Why this one'), findsOneWidget);
-    expect(find.text('Agent trace'), findsOneWidget);
-    await tester.tap(find.text('Agent trace'));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.scrollUntilVisible(find.text('FAILED'), 200, scrollable: listScroll);
-    expect(find.text('FAILED'), findsOneWidget);
+    expect(find.text('Agent trace'), findsNothing);
 
     // Host taps one button (no approval sheet) -> everyone is sent to the restaurant in Careem.
     expect(find.text('Create group order'), findsNothing);

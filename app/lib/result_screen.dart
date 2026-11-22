@@ -183,8 +183,6 @@ class _ResultViewState extends State<ResultView> {
             onToggleWhy: () => setState(() => _whyOpen = !_whyOpen),
           ),
           const SizedBox(height: Tok.s16),
-          AgentTrace(steps: res.trace),
-          const SizedBox(height: Tok.s16),
         ]),
       ),
       const SizedBox(height: Tok.s12),
