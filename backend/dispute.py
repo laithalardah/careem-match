@@ -254,6 +254,39 @@ def confirm(room: Room, pid: str) -> None:
         room, [{"shortlist": [g["restaurant_id"]], "participant_ids": list(g["participant_ids"])} for g in s["groups"]], "split")
 
 
+# ── Somebody left during a dispute ───────────────────────────────────────────
+def on_removed(room: Room, pid: str) -> None:
+    import engine
+
+    d = room.dispute
+    if not d:
+        return
+    d["method_votes"].pop(pid, None)
+    for c in d["contenders"]:
+        c["supporter_ids"] = [x for x in c["supporter_ids"] if x != pid]
+    d["contenders"] = [c for c in d["contenders"] if c["supporter_ids"]]
+    for seg in (d.get("wheel") or {}).get("segments", []):
+        seg["weight"] = float(len(next((c["supporter_ids"] for c in d["contenders"] if c["restaurant_id"] == seg["restaurant_id"]), [])))
+    if d.get("wheel"):
+        d["wheel"]["segments"] = [s for s in d["wheel"]["segments"] if s["weight"] > 0]
+    if d.get("split"):
+        for g in d["split"]["groups"]:
+            g["participant_ids"] = [x for x in g["participant_ids"] if x != pid]
+        d["split"]["groups"] = [g for g in d["split"]["groups"] if g["participant_ids"]]
+    room.touch()
+    if len(d["contenders"]) < 2:  # nothing left to argue about: the remaining camp wins
+        if d["contenders"]:
+            engine.begin_matching(room, [{"shortlist": [d["contenders"][0]["restaurant_id"]],
+                                          "participant_ids": list(room.participants)}], "consensus")
+        else:
+            rooms.finish_no_match(room, "Everyone who picked a restaurant left.")
+    elif not d["method"]:
+        _settle_method(room)
+    elif d["method"] == "split" and len(d["split"]["groups"]) == 1 and not d["split"]["confirmed"]:
+        engine.begin_matching(room, [{"shortlist": [d["split"]["groups"][0]["restaurant_id"]],
+                                      "participant_ids": list(room.participants)}], "consensus")
+
+
 # ── Demo friends ─────────────────────────────────────────────────────────────
 def bot_action(room: Room, bot, rng) -> bool:
     """Demo friends alternate their vote (1st wheel, 2nd split, ...), so the host's vote is always decisive."""

@@ -15,6 +15,7 @@ from catalog import MEAL_CATEGORIES, Catalog
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 MEALS = tuple(MEAL_CATEGORIES)
 MODES = ("food", "dineout")
+DEFAULT_MEAL = "dinner"
 
 
 class ApiError(Exception):
@@ -48,6 +49,7 @@ class Room:
     dispute: dict | None = None
     result: dict | None = None
     order: dict | None = None
+    last_match: tuple | None = None  # (groups, resolution) of the last begin_matching, used by retry
     plans: dict[str, Any] = field(default_factory=dict)  # group_id -> planner.Plan (used by the order step)
     order_state: dict[str, Any] = field(default_factory=dict)  # group_id -> {"added": {line indexes}} (no double adds)
     forced: dict[str, Any] | None = None  # e.g. {"restaurant_id": 30101} after a wheel spin
@@ -159,7 +161,7 @@ def start(room: Room, pid: str, catalog: Catalog, histories: dict | None = None,
     require_host(room, pid)
     require_stage(room, "settings")
     if not room.meal:
-        raise ApiError(409, "Pick a meal first.")
+        room.meal = DEFAULT_MEAL  # the app shows this one pre-selected; starting without a tap must work
     cards = catalog.category_cards(room.meal)
     if not cards:
         raise ApiError(409, f"No open restaurants for {room.meal} nearby. Try another meal.")
@@ -171,6 +173,44 @@ def start(room: Room, pid: str, catalog: Catalog, histories: dict | None = None,
     room.cards = {"category": cards}
     room.swipes = {p: {} for p in room.participants}
     room.level, room.stage = "category", "swiping"
+    room.touch()
+
+
+# ── People leaving, and starting over ────────────────────────────────────────
+def remove_participant(room: Room, actor: str, target: str) -> None:
+    """A guest leaves (actor == target) or the host removes someone who is stuck. Not possible once
+    matching has started, and the host cannot be removed."""
+    require_participant(room, actor)
+    if target not in room.participants:
+        raise ApiError(404, "That person is not in the room.")
+    if actor != target:
+        require_host(room, actor)
+    if target == room.host_id:
+        raise ApiError(409, "The host cannot leave. Start over or close the app instead.")
+    require_stage(room, "lobby", "settings", "swiping", "dispute")
+    del room.participants[target]
+    room.swipes.pop(target, None)
+    room.touch()
+    if room.stage == "swiping":
+        _maybe_advance(room)  # they may have been the one everybody was waiting for
+    elif room.stage == "dispute":
+        import dispute
+
+        dispute.on_removed(room, target)
+
+
+def restart(room: Room, pid: str) -> None:
+    """Host: everybody stays, the swipes, dispute, result and order are cleared, back to the meal settings."""
+    require_host(room, pid)
+    if room.stage in ("lobby", "settings"):
+        raise ApiError(409, "Nothing to restart yet.")
+    for t in room.tasks:
+        t.cancel()
+    room.tasks = []
+    room.stage, room.level = "settings", None
+    room.cards, room.swipes = {}, {}
+    room.dispute = room.result = room.order = room.forced = room.last_match = None
+    room.plans, room.order_state = {}, {}
     room.touch()
 
 
@@ -266,4 +306,6 @@ def to_dict(room: Room) -> dict:
             for p in sorted(room.participants.values(), key=lambda p: p.joined_at)
         ],
         "dispute": room.dispute if room.stage == "dispute" else None,
+        # what the host's group order did, so guests can see it too (null until the host approves)
+        "order": room.order,
     }

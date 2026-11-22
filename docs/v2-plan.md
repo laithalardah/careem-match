@@ -109,7 +109,15 @@ Join link: `{PUBLIC_APP_URL}/#/join/{room_code}`.
 - **Demo friends** vote alternately (1st wheel, 2nd split, ...), so the host's vote is always decisive. They never move groups.
 - **Sandbox quirks**: its cart and price answers are fixed test data, so the order step accepts them with a note and shows our own price estimate.
   Against the real MCP, confirmations are matched by item id and unconfirmed items are a failure.
-- **Run**: `DEMO=1 uvicorn main:app --host 0.0.0.0 --port 8000` (from `backend/`), sandbox MCP at 127.0.0.1:8787, `.env` for AWS keys.
+- **Default meal**: starting without picking a meal uses `dinner` (and `settings.meal` shows it), so the pre-selected chip in the app is honest.
+- **Room has `order`**: `GET /rooms/{code}` returns `order: null | {status, message, groups[...]}` so guests (not only the host) can read the order. Order groups may carry a `note` (technical detail, e.g. sandbox quirks) separate from the user-facing `message`.
+- **Leaving / starting over** (all `{participant_id}` bodies, all return `{ok:true}`):
+  `POST /rooms/{code}/leave` (a guest leaves; host can't), `POST /rooms/{code}/kick {participant_id, target_id}` (host removes a stuck person; the room then advances or finishes),
+  `POST /rooms/{code}/restart` (host: same people, back to settings, everything cleared; allowed from swiping, dispute, result, ordered),
+  `POST /rooms/{code}/retry` (host: re-run the matching after `status:"failed"`). Leave/kick are refused once matching has started (409).
+- **CORS** exposes the `Date` header so the app can compute each phone's clock offset for the wheel.
+- **The backend serves the app**: if `app/build/web` exists it is served at `/`, same address as the API (`start_demo.ps1` does the whole thing for your Wi-Fi address).
+- **Run**: `.\start_demo.ps1` from the repo root, or `DEMO=1 uvicorn main:app --host 0.0.0.0 --port 8000` from `backend/` (sandbox MCP at 127.0.0.1:8787, `.env` for AWS keys).
 
 ## 5. Prompt for Antigravity (front end)
 See `docs/prompt-antigravity.md`.

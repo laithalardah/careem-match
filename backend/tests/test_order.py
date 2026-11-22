@@ -72,7 +72,7 @@ def test_sandbox_shows_our_estimate_not_its_fixed_price(h, monkeypatch):
     code, pids = ready(h)  # MCP_URL is the local sandbox in tests
     g = post(h, code, pids["A"]).json()["groups"][0]
     est = round(sum(b["price"] for b in h.c.get(f"/rooms/{code}/result").json()["groups"][0]["basket"]), 2)
-    assert g["price_breakdown"]["total"] == est and "estimate" in g["message"]
+    assert g["price_breakdown"]["total"] == est and "estimate" in g["note"] and "andbox" not in g["message"]
     assert not [c for c in log if c[0] == "price"]  # the fixed sandbox price is not even read
 
 
@@ -150,7 +150,8 @@ def test_sandbox_fixed_answers_are_accepted_with_a_note(h, monkeypatch):
     code, pids = ready(h)  # MCP_URL is the local sandbox in tests
     body = post(h, code, pids["A"]).json()
     assert body["status"] == "basket_ready"
-    assert "could not be verified" in body["groups"][0]["message"]
+    assert "could not be verified" in body["groups"][0]["note"]
+    assert "could not be verified" not in body["groups"][0]["message"]  # the user-facing text stays clean
 
 
 def test_against_the_real_mcp_unconfirmed_items_are_a_failure(h, monkeypatch):

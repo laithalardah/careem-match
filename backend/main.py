@@ -5,11 +5,14 @@ All state-changing handlers are `async def`, so room mutations run on the event 
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import config
@@ -23,7 +26,8 @@ from catalog import get_catalog
 from rooms import ApiError
 
 app = FastAPI(title="Careem Match", version="2.1")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# `Date` is exposed so the app can estimate each phone's clock offset and start the wheel in sync.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"], expose_headers=["Date"])
 
 
 @app.exception_handler(ApiError)
@@ -66,6 +70,10 @@ class Vote(Actor):
 
 class Move(Actor):
     restaurant_id: int
+
+
+class Kick(Actor):
+    target_id: str
 
 
 # ── Basics ───────────────────────────────────────────────────────────────────
@@ -130,6 +138,34 @@ async def demo_friends(code: str, body: DemoFriends):
     return {"ok": True, "added": [{"id": p.id, "name": p.name} for p in added]}
 
 
+# ── Leaving and starting over ────────────────────────────────────────────────
+@app.post("/rooms/{code}/leave")
+async def leave(code: str, body: Actor):
+    rooms.remove_participant(rooms.get_room(code), body.participant_id, body.participant_id)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/kick")
+async def kick(code: str, body: Kick):
+    """Host removes someone who is stuck (closed their phone, left the room) so the others can go on."""
+    rooms.remove_participant(rooms.get_room(code), body.participant_id, body.target_id)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/restart")
+async def restart(code: str, body: Actor):
+    """Host: new round with the same people (use after 'no match', or to try another meal)."""
+    rooms.restart(rooms.get_room(code), body.participant_id)
+    return {"ok": True}
+
+
+@app.post("/rooms/{code}/retry")
+async def retry(code: str, body: Actor):
+    """Host: run the matching again after it failed."""
+    engine.retry(rooms.get_room(code), body.participant_id)
+    return {"ok": True}
+
+
 # ── Swiping ──────────────────────────────────────────────────────────────────
 @app.get("/rooms/{code}/cards")
 async def cards(code: str, participant_id: str):
@@ -185,3 +221,12 @@ async def result(code: str):
 async def order_endpoint(code: str, body: Actor):
     """The host's approval. Builds the basket(s); never checks out."""
     return await order.create_orders(rooms.get_room(code), body.participant_id)
+
+
+# ── The app itself ───────────────────────────────────────────────────────────
+# If the Flutter web build exists, serve it from the same address as the API. Then a friend only needs one
+# URL, join links work, and there are no cross-origin problems.
+#   cd app && flutter build web --release --dart-define=API_BASE=http://<this machine's address>:8000
+_WEB = Path(os.getenv("WEB_DIR") or Path(__file__).resolve().parent.parent / "app" / "build" / "web")
+if _WEB.is_dir():
+    app.mount("/", StaticFiles(directory=_WEB, html=True), name="web")  # must stay LAST: API routes win

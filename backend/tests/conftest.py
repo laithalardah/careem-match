@@ -7,6 +7,7 @@ os.environ["DEMO"] = "1"
 os.environ["BOT_MIN_DELAY"] = "0"
 os.environ["BOT_MAX_DELAY"] = "0"
 os.environ["WHEEL_DURATION_MS"] = "40"
+os.environ["WEB_DIR"] = os.path.join(os.path.dirname(__file__), "web_stub")
 os.environ["WHEEL_REVEAL_PAUSE_MS"] = "40"
 
 import pytest  # noqa: E402

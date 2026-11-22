@@ -33,10 +33,21 @@ def on_restaurants_done(room: Room) -> None:
         begin_matching(room, groups, "consensus")
 
 
-def begin_matching(room: Room, groups: list[dict], resolution: str) -> None:
+def retry(room: Room, pid: str) -> None:
+    """Host: run the matching again after it failed (same groups, same shortlists)."""
+    rooms.require_host(room, pid)
+    rooms.require_stage(room, "result")
+    if not room.result or room.result.get("status") != "failed" or not room.last_match:
+        raise rooms.ApiError(409, "There is nothing to retry.")
+    groups, resolution = room.last_match
+    begin_matching(room, groups, resolution, force=True)
+
+
+def begin_matching(room: Room, groups: list[dict], resolution: str, force: bool = False) -> None:
     """groups: [{shortlist: [restaurant ids, best first], participant_ids: [...]}]"""
-    if room.stage == "matching":
+    if room.stage == "matching" and not force:
         return  # already running (e.g. a duplicate trigger)
+    room.last_match = (groups, resolution)
     room.stage = "matching"
     result = rooms.empty_result("running", resolution=resolution)
     result["scores"] = scoring.public_scores(dispute.evaluate(room).ranked) if room.cards.get("restaurant") else []

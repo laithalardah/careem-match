@@ -54,8 +54,8 @@ def test_host_only_and_stage_guards(h, client):
     assert client.put(f"/rooms/{code}/settings", json={"participant_id": guest, "meal": "lunch"}).status_code == 403
     # bad meal
     assert client.put(f"/rooms/{code}/settings", json={"participant_id": host, "meal": "brunch"}).status_code == 422
-    # cannot start without a meal
-    assert client.post(f"/rooms/{code}/start", json={"participant_id": host}).status_code == 409
+    # a guest cannot start the swiping
+    assert client.post(f"/rooms/{code}/start", json={"participant_id": guest}).status_code == 403
 
 
 def test_next_needs_two_people(h, client):

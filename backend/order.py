@@ -177,7 +177,7 @@ async def _order_group(room: Room, cart, g: dict, st: dict) -> dict:
             # The sandbox answers with fixed test data instead of echoing our items. Accept, but say so.
             st["added"] |= unverified
             unverified = set()
-            note = " (Sandbox answered with fixed test data, so the items could not be verified.)"
+            note = "Sandbox answered with fixed test data, so the items could not be verified."
         else:
             note = ""
         failed += [f"{plan.lines[i].dish.name} (Careem did not confirm it)" for i in sorted(unverified)]
@@ -188,18 +188,21 @@ async def _order_group(room: Room, cart, g: dict, st: dict) -> dict:
     else:
         note = ""
 
+    msg = f"Basket created at {plan.restaurant.name}. Not paid."
     try:
         if config.sandbox_mcp():
             # The sandbox's price lookup is fixed test data that does not match our items, so show our own estimate.
             breakdown = estimate(plan, currency)
-            msg = f"Basket created at {plan.restaurant.name}. Not paid. (Sandbox prices are fixed test data; this is the estimate from menu prices.)"
+            note = (note + " Sandbox prices are fixed test data; the total is the estimate from menu prices.").strip()
         else:
             breakdown = breakdown_from_price(await cart.price(plan.restaurant.id), currency)
-            msg = f"Basket created at {plan.restaurant.name}. Not paid."
     except Exception as e:  # noqa: BLE001  (price is a read; the basket itself is fine)
         breakdown = estimate(plan, currency)
         msg = f"Basket created at {plan.restaurant.name}, but the final price could not be read ({type(e).__name__}); showing an estimate."
-    return {**base, "status": "basket_ready", "price_breakdown": breakdown, "message": msg + note}
+    out = {**base, "status": "basket_ready", "price_breakdown": breakdown, "message": msg}
+    if note:
+        out["note"] = note  # technical detail for developers, kept out of the user-facing message
+    return out
 
 
 def match_results(plan, todo: list[int], results: list[dict]) -> tuple[set[int], list[str], set[int]]:
