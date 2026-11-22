@@ -257,12 +257,27 @@ class _LobbyViewState extends State<LobbyView> {
         ]),
       ),
       const SizedBox(height: Tok.s12),
-      if (isHost)
+      if (isHost) ...[
+        if (widget.ctrl.health.demo && room.participants.length < 2) ...[
+          OutlinedButton.icon(
+            onPressed: widget.ctrl.busy
+                ? null
+                : () => widget.ctrl.addDemoFriends(count: 1, scenario: widget.ctrl.api.forceDispute ? 'dispute' : 'consensus'),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Tok.careemMintWash,
+              foregroundColor: Tok.careemDark,
+              side: const BorderSide(color: Tok.careemGreen, width: 1.5),
+            ),
+            icon: const PhosphorIcon(PhosphorIconsBold.robot, size: 18, color: Tok.careemGreen),
+            label: Text(widget.ctrl.busy ? 'Adding demo bot...' : 'Add demo bot to continue'),
+          ),
+          const SizedBox(height: Tok.s8),
+        ],
         FilledButton(
           onPressed: canAdvance ? widget.ctrl.nextToSettings : null,
           child: Text(room.participants.length < 2 ? 'Waiting for 1 more person' : 'Next'),
-        )
-      else
+        ),
+      ] else
         Panel(
           padding: const EdgeInsets.symmetric(horizontal: Tok.s16, vertical: 14),
           color: Tok.wash,
@@ -359,15 +374,25 @@ class SettingsView extends StatelessWidget {
                       duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
                       padding: const EdgeInsets.all(Tok.s16),
                       decoration: BoxDecoration(
-                        color: selected == meal ? Tok.ink : Tok.card,
+                        gradient: selected == meal
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Tok.careemGreen, Tok.careemDark],
+                              )
+                            : null,
+                        color: selected == meal ? null : Tok.card,
                         borderRadius: BorderRadius.circular(Tok.radius),
-                        border: Border.all(color: selected == meal ? Tok.ink : Tok.border, width: selected == meal ? 1.5 : 1),
+                        border: Border.all(
+                          color: selected == meal ? Tok.careemGreen : Tok.border,
+                          width: selected == meal ? 1.5 : 1,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          PhosphorIcon(_mealIcon(meal), size: 22, color: selected == meal ? Colors.white : Tok.ink),
+                          PhosphorIcon(_mealIcon(meal), size: 22, color: selected == meal ? Tok.careemMint : Tok.careemGreen),
                           Text(
                             meal.label,
                             style: T.body(

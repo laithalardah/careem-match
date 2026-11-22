@@ -52,10 +52,9 @@ void main() {
     expect(find.byIcon(PhosphorIconsFill.crown), findsOneWidget);
     expect(find.text('Awni (you)'), findsOneWidget);
 
-    // Add demo friends -> enables Next.
-    await tester.tap(find.text('Add demo friends'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Add 2 demo friends'));
+    // 1-tap demo bot button is immediately visible in footer and unlocks Next.
+    expect(find.text('Add demo bot to continue'), findsOneWidget);
+    await tester.tap(find.text('Add demo bot to continue'));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
 
