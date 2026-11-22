@@ -1,0 +1,137 @@
+{
+  "source": "sandbox",
+  "restaurants": {
+    "30104": {
+      "id": 30104,
+      "name": "Morning Syrniki Café",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/morning-syrniki-cafe-hero.jpg",
+      "cuisine": "Breakfast",
+      "rating": 4.8,
+      "currency": "AED"
+    },
+    "30102": {
+      "id": 30102,
+      "name": "Sakura Sushi Lab",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/sakura-sushi-lab-hero.jpg",
+      "cuisine": "Japanese",
+      "rating": 4.4,
+      "currency": "AED"
+    },
+    "30103": {
+      "id": 30103,
+      "name": "Pizza Piazza",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/pizza-piazza-hero.jpg",
+      "cuisine": "Italian",
+      "rating": 4.5,
+      "currency": "AED"
+    },
+    "30101": {
+      "id": 30101,
+      "name": "Shawarma Station",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/shawarma-station-hero.jpg",
+      "cuisine": "Arabic",
+      "rating": 4.6,
+      "currency": "AED"
+    },
+    "30105": {
+      "id": 30105,
+      "name": "Green Bowl Co.",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/restaurants/green-bowl-co-hero.jpg",
+      "cuisine": "Healthy",
+      "rating": 4.3,
+      "currency": "AED"
+    }
+  },
+  "dishes": [
+    {
+      "id": "700401",
+      "name": "Classic Syrniki with Sour Cream",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700401.jpg",
+      "cuisine": "Breakfast",
+      "restaurant_id": 30104,
+      "price": 34,
+      "requires_options": true
+    },
+    {
+      "id": "700402",
+      "name": "Cappuccino",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700402.jpg",
+      "cuisine": "Breakfast",
+      "restaurant_id": 30104,
+      "price": 19,
+      "requires_options": true
+    },
+    {
+      "id": "700201",
+      "name": "Salmon Avocado Roll (8 pcs)",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700201.jpg",
+      "cuisine": "Japanese",
+      "restaurant_id": 30102,
+      "price": 42,
+      "requires_options": false
+    },
+    {
+      "id": "700202",
+      "name": "Chicken Katsu Bento",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700202.jpg",
+      "cuisine": "Japanese",
+      "restaurant_id": 30102,
+      "price": 48,
+      "requires_options": false
+    },
+    {
+      "id": "700301",
+      "name": "Margherita Pizza",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700301.jpg",
+      "cuisine": "Italian",
+      "restaurant_id": 30103,
+      "price": 39,
+      "requires_options": true
+    },
+    {
+      "id": "700302",
+      "name": "Pepperoni Pizza",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700302.jpg",
+      "cuisine": "Italian",
+      "restaurant_id": 30103,
+      "price": 46,
+      "requires_options": false
+    },
+    {
+      "id": "700101",
+      "name": "Chicken Shawarma Wrap",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700101.jpg",
+      "cuisine": "Arabic",
+      "restaurant_id": 30101,
+      "price": 18,
+      "requires_options": true
+    },
+    {
+      "id": "700102",
+      "name": "Falafel Plate",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700102.jpg",
+      "cuisine": "Arabic",
+      "restaurant_id": 30101,
+      "price": 22,
+      "requires_options": false
+    },
+    {
+      "id": "700103",
+      "name": "Mixed Grill Platter",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700103.jpg",
+      "cuisine": "Arabic",
+      "restaurant_id": 30101,
+      "price": 65,
+      "requires_options": false
+    },
+    {
+      "id": "700501",
+      "name": "Chicken Caesar Bowl",
+      "image_url": "https://careem-catalog-media.media.careem.com/food/items/700501.jpg",
+      "cuisine": "Healthy",
+      "restaurant_id": 30105,
+      "price": 38,
+      "requires_options": false
+    }
+  ]
+}
