@@ -32,30 +32,38 @@ class Shell extends StatelessWidget {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(Tok.s16, Tok.s12, Tok.s16, header == null ? Tok.s12 : Tok.s16),
+                  // Extra 24 at the bottom: the sheet overlaps it, so both top corners of the curve show header green.
+                  padding: EdgeInsets.fromLTRB(Tok.s16, Tok.s12, Tok.s16, (header == null ? Tok.s12 : Tok.s16) + 24),
                   child: header ?? const SizedBox(height: 8),
                 ),
               ),
             ),
             // Rounded plain white sheet rising over the green header: identical to the home page.
             Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(Tok.s24, Tok.s16, Tok.s24, Tok.s24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(child: child),
-                        if (footer != null) ...[const SizedBox(height: Tok.s16), footer!],
-                      ],
+              child: LayoutBuilder(
+                builder: (context, box) => OverflowBox(
+                  alignment: Alignment.bottomCenter,
+                  minHeight: box.maxHeight + 24,
+                  maxHeight: box.maxHeight + 24,
+                  child: Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(Tok.s24, Tok.s16, Tok.s24, Tok.s24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: child),
+                            if (footer != null) ...[const SizedBox(height: Tok.s16), footer!],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
