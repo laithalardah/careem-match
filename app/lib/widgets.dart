@@ -6,13 +6,22 @@ import 'theme.dart';
 /// Careem-themed shell matching the Hub structure:
 /// dark forest-green gradient header + rounded plain white sheet (max 480).
 class Shell extends StatelessWidget {
-  const Shell({super.key, required this.child, this.header, this.footer});
+  const Shell({super.key, required this.child, this.header, this.footer, this.immersive = false});
   final Widget child;
   final Widget? header;
   final Widget? footer;
 
+  /// Full-screen mode: no header or sheet, the child fills everything (give `child` a GlobalKey to keep its state).
+  final bool immersive;
+
   @override
   Widget build(BuildContext context) {
+    if (immersive) {
+      return Scaffold(
+        backgroundColor: Tok.careemDark,
+        body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: Tok.maxWidth), child: child)),
+      );
+    }
     return Scaffold(
       backgroundColor: Tok.careemDark,
       body: Center(

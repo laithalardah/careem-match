@@ -27,6 +27,7 @@ class RoomScreen extends StatefulWidget {
 class _RoomScreenState extends State<RoomScreen> {
   late final RoomController _ctrl = RoomController(api: widget.api, roomCode: widget.roomCode.toUpperCase());
   bool _allowLeave = false;
+  final GlobalKey _contentKey = GlobalKey();
 
   @override
   void initState() {
@@ -84,7 +85,10 @@ class _RoomScreenState extends State<RoomScreen> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _confirmLeave();
       },
-      child: Shell(
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _ctrl.immersive,
+        builder: (context, immersive, _) => Shell(
+        immersive: immersive,
         header: CareemHeaderBar(
           onBack: _confirmLeave,
           backTooltip: 'Leave room',
@@ -93,6 +97,7 @@ class _RoomScreenState extends State<RoomScreen> {
           trailing: widget.api.isMock ? const Tag('Mock backend', colors: Tok.yellow) : null,
         ),
         child: ListenableBuilder(
+          key: _contentKey,
           listenable: _ctrl,
           builder: (context, _) {
             final room = _ctrl.room;
@@ -124,6 +129,7 @@ class _RoomScreenState extends State<RoomScreen> {
             ]);
           },
         ),
+      ),
       ),
     );
   }

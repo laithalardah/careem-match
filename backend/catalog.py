@@ -26,6 +26,9 @@ def cache_path() -> Path:
 
 # Amman, Jordan. (Sandbox data is Dubai/AED and is selected by restaurant id.)
 LOCATION = {"latitude": 31.9539, "longitude": 35.9106}
+# Demo-only promotions (the sandbox has none): percent off by restaurant id; None = no discount.
+DEMO_DISCOUNTS = (None, 25, None, 40, 60, None, 35, 50)
+
 DISCOVERY_QUERIES = ["shawarma", "burger", "pizza", "sushi", "breakfast", "bowl", "syrniki", "dessert",
                      "gelato", "mandi", "noodles", "foul", "slice", "salad"]
 
@@ -203,10 +206,13 @@ class Catalog:
 
     @staticmethod
     def restaurant_card(r: Restaurant) -> dict:
+        # The sandbox has no promotions, so the demo gives each restaurant a stable discount (or none) and Plus flag.
+        rid = int(r.id) if str(r.id).isdigit() else sum(map(ord, str(r.id)))
         return {
             "id": str(r.id), "level": "restaurant", "title": r.name, "description": r.description,
             "cuisine": r.category, "rating": r.rating, "eta_minutes": r.eta_minutes,
             "image_url": r.image_url, "top_dishes": r.top_dishes,
+            "discount_pct": DEMO_DISCOUNTS[rid % len(DEMO_DISCOUNTS)], "careem_plus": rid % 3 != 0,
         }
 
 

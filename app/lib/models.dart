@@ -412,8 +412,12 @@ class SwipeCard {
   final int? etaMinutes;
   final String? imageUrl;
   final List<String> topDishes;
+  final int? discountPct;
+  final bool careemPlus;
 
   const SwipeCard({
+    this.discountPct,
+    this.careemPlus = false,
     required this.id,
     required this.level,
     required this.title,
@@ -437,6 +441,8 @@ class SwipeCard {
         etaMinutes: (j['eta_minutes'] as num?)?.toInt(),
         imageUrl: j['image_url'] as String?,
         topDishes: [for (final d in (j['top_dishes'] ?? const []) as List) '$d'],
+        discountPct: (j['discount_pct'] as num?)?.toInt(),
+        careemPlus: j['careem_plus'] == true,
       );
 }
 

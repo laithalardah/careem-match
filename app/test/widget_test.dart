@@ -163,7 +163,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('CATEGORIES'), findsOneWidget);
+    expect(find.text('Categories'), findsOneWidget);
     expect(find.text('Like'), findsOneWidget);
 
     // Finish Level 1 (5 category cards) -> Level 2 interstitial ("Now pick restaurants.").
@@ -179,7 +179,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('RESTAURANTS'), findsOneWidget);
+    expect(find.text('Restaurants'), findsOneWidget);
     expect(find.text('Shawarma Station'), findsOneWidget);
 
     // Finish Level 2 (6 restaurant cards) -> Matching -> 1-group Result.
@@ -254,7 +254,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('CATEGORIES'), findsOneWidget);
+    expect(find.text('Categories'), findsOneWidget);
     for (var i = 0; i < 5; i++) {
       await _tapLike(tester);
     }

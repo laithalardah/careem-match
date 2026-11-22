@@ -22,6 +22,9 @@ class RoomController extends ChangeNotifier {
 
   String? participantId;
   Room? room;
+
+  /// True while a swipe deck is on screen: the room screen then drops its header and sheet so the card fills the screen.
+  final ValueNotifier<bool> immersive = ValueNotifier(false);
   HealthInfo health = const HealthInfo(status: 'ok', demo: false);
   CardsResponse? cards;
   RoomResult? result;
@@ -316,6 +319,7 @@ class RoomController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _timer?.cancel();
+    immersive.dispose();
     super.dispose();
   }
 }

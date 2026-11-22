@@ -96,6 +96,7 @@ class _RoomSwipeViewState extends State<RoomSwipeView> {
       initialIndex: initialIndex,
       isHost: widget.ctrl.isHost,
       busy: widget.ctrl.busy,
+      immersive: widget.ctrl.immersive,
       onSwipe: (card, liked) => widget.ctrl.swipeCard(level, card.id, liked),
       onRequestDispute: widget.ctrl.requestEarlyDispute,
     );
@@ -228,9 +229,12 @@ class _SwipeDeck extends StatefulWidget {
     required this.initialIndex,
     required this.isHost,
     required this.busy,
+    required this.immersive,
     required this.onSwipe,
     required this.onRequestDispute,
   });
+
+  final ValueNotifier<bool> immersive;
 
   final SwipeLevel level;
   final List<SwipeCard> cards;
@@ -260,10 +264,22 @@ class _SwipeDeckState extends State<_SwipeDeck> with SingleTickerProviderStateMi
     _ctrl.addListener(() {
       if (_anim != null) setState(() => _drag = _anim!.value);
     });
+    _setImmersive(true);
+  }
+
+  /// Switches the room screen to full-screen (after this frame, so nothing rebuilds mid-build).
+  void _setImmersive(bool on) {
+    final n = widget.immersive;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        n.value = on;
+      } catch (_) {} // the controller was already disposed
+    });
   }
 
   @override
   void dispose() {
+    _setImmersive(false);
     _ctrl.dispose();
     super.dispose();
   }
@@ -290,6 +306,7 @@ class _SwipeDeckState extends State<_SwipeDeck> with SingleTickerProviderStateMi
         _index++;
       } else {
         _finishedLocally = true;
+        _setImmersive(false);
       }
     });
   }
@@ -334,105 +351,137 @@ class _SwipeDeckState extends State<_SwipeDeck> with SingleTickerProviderStateMi
         }
         return KeyEventResult.ignored;
       },
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Tag(isLevel2 ? 'Restaurants' : 'Categories', colors: isLevel2 ? Tok.green : Tok.blue),
-          const Spacer(),
-          Text('${_index + 1} of $total', style: T.mono(size: 12)),
-        ]),
-        const SizedBox(height: Tok.s12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: LinearProgressIndicator(
-            value: _index / total,
-            minHeight: 2,
-            backgroundColor: Tok.border,
-            color: Tok.ink,
-          ),
-        ),
-        const SizedBox(height: Tok.s16),
-        Expanded(
-          child: LayoutBuilder(builder: (context, box) {
-            final w = box.maxWidth;
-            final progress = (_drag.dx.abs() / _threshold).clamp(0.0, 1.0);
-            return Stack(alignment: Alignment.topCenter, children: [
-              if (next != null)
-                Transform.scale(
-                  scale: 0.95 + 0.05 * progress,
-                  alignment: Alignment.bottomCenter,
-                  child: Opacity(opacity: 0.6 + 0.4 * progress, child: _CardFace(card: next, key: ValueKey('b${next.id}'))),
-                ),
-              Semantics(
-                label: '${card.title}${card.cuisine.isNotEmpty ? ', ${card.cuisine}' : ''}. Card ${_index + 1} of $total.',
-                customSemanticsActions: {
-                  const CustomSemanticsAction(label: 'Like'): () => _decide(true, w),
-                  const CustomSemanticsAction(label: 'Skip'): () => _decide(false, w),
+      child: LayoutBuilder(builder: (context, box) {
+        final w = box.maxWidth;
+        final progress = (_drag.dx.abs() / _threshold).clamp(0.0, 1.0);
+        final pad = MediaQuery.paddingOf(context);
+        final bottomInset = pad.bottom + (showEarlyDispute ? 156.0 : 112.0);
+        return Stack(children: [
+          const Positioned.fill(child: ColoredBox(color: Tok.careemDark)),
+          if (next != null)
+            Positioned.fill(
+              child: Transform.scale(
+                scale: 0.96 + 0.04 * progress,
+                child: _CardFace(card: next, bottomInset: bottomInset, key: ValueKey('b${next.id}')),
+              ),
+            ),
+          Positioned.fill(
+            child: Semantics(
+              label: '${card.title}${card.cuisine.isNotEmpty ? ', ${card.cuisine}' : ''}. Card ${_index + 1} of $total.',
+              customSemanticsActions: {
+                const CustomSemanticsAction(label: 'Like'): () => _decide(true, w),
+                const CustomSemanticsAction(label: 'Skip'): () => _decide(false, w),
+              },
+              child: GestureDetector(
+                onPanUpdate: (d) {
+                  if (_animating) return;
+                  setState(() => _drag += Offset(d.delta.dx, d.delta.dy * 0.3));
                 },
-                child: GestureDetector(
-                  onPanUpdate: (d) {
-                    if (_animating) return;
-                    setState(() => _drag += Offset(d.delta.dx, d.delta.dy * 0.3));
-                  },
-                  onPanEnd: (d) {
-                    if (_animating) return;
-                    final fling = d.velocity.pixelsPerSecond.dx;
-                    if (_drag.dx > _threshold || fling > 900) {
-                      _decide(true, w);
-                    } else if (_drag.dx < -_threshold || fling < -900) {
-                      _decide(false, w);
-                    } else {
-                      _animating = true;
-                      _animateTo(Offset.zero);
-                    }
-                  },
-                  child: Transform.translate(
-                    offset: _drag,
-                    child: Transform.rotate(
-                      angle: _drag.dx / (w <= 0 ? 320 : w) * 0.12,
-                      child: Stack(children: [
-                        _CardFace(card: card, key: ValueKey('t${card.id}')),
-                        Positioned(top: 20, left: 20, child: _Stamp('Like', Tok.green, _drag.dx > 0 ? progress : 0)),
-                        Positioned(top: 20, right: 20, child: _Stamp('Skip', Tok.red, _drag.dx < 0 ? progress : 0)),
-                      ]),
-                    ),
+                onPanEnd: (d) {
+                  if (_animating) return;
+                  final fling = d.velocity.pixelsPerSecond.dx;
+                  if (_drag.dx > _threshold || fling > 900) {
+                    _decide(true, w);
+                  } else if (_drag.dx < -_threshold || fling < -900) {
+                    _decide(false, w);
+                  } else {
+                    _animating = true;
+                    _animateTo(Offset.zero);
+                  }
+                },
+                child: Transform.translate(
+                  offset: _drag,
+                  child: Transform.rotate(
+                    angle: _drag.dx / (w <= 0 ? 320 : w) * 0.06,
+                    child: Stack(children: [
+                      Positioned.fill(child: _CardFace(card: card, bottomInset: bottomInset, key: ValueKey('t${card.id}'))),
+                      Positioned(top: pad.top + 84, left: 24, child: _Stamp('Like', Tok.green, _drag.dx > 0 ? progress : 0)),
+                      Positioned(top: pad.top + 84, right: 24, child: _Stamp('Skip', Tok.red, _drag.dx < 0 ? progress : 0)),
+                    ]),
                   ),
                 ),
               ),
-            ]);
-          }),
-        ),
-        const SizedBox(height: Tok.s16),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _decide(false, MediaQuery.sizeOf(context).width),
-              icon: const PhosphorIcon(PhosphorIconsBold.x, size: 18),
-              label: const Text('Skip'),
             ),
           ),
-          const SizedBox(width: Tok.s12),
-          Expanded(
-            child: FilledButton.icon(
-              onPressed: () => _decide(true, MediaQuery.sizeOf(context).width),
-              icon: const PhosphorIcon(PhosphorIconsFill.heart, size: 18),
-              label: const Text('Like'),
+          // Top bar: back, level, counter, progress.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, pad.top + 12, 16, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Material(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => Navigator.of(context).maybePop(),
+                      child: const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Center(child: PhosphorIcon(PhosphorIconsBold.caretLeft, size: 20, color: Colors.white)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(isLevel2 ? 'Restaurants' : 'Categories', style: T.body(size: 15, weight: FontWeight.w700, color: Colors.white)),
+                  const Spacer(),
+                  Text('${_index + 1} of $total', style: T.mono(size: 13, color: Colors.white.withValues(alpha: 0.85))),
+                ]),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: _index / total,
+                    minHeight: 3,
+                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                    color: Tok.careemMint,
+                  ),
+                ),
+              ]),
             ),
           ),
-        ]),
-        if (showEarlyDispute) ...[
-          const SizedBox(height: Tok.s8),
-          Center(
-            child: TextButton(
-              onPressed: widget.busy ? null : widget.onRequestDispute,
-              style: TextButton.styleFrom(
-                minimumSize: const Size(44, 44),
-                foregroundColor: Tok.secondary,
-              ),
-              child: Text("Can't decide? Help us decide", style: T.body(size: 13.5, weight: FontWeight.w500, color: Tok.secondary)),
-            ),
+          // Bottom: actions over the green fade.
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: pad.bottom + 20,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (showEarlyDispute)
+                TextButton(
+                  onPressed: widget.busy ? null : widget.onRequestDispute,
+                  style: TextButton.styleFrom(minimumSize: const Size(44, 44), foregroundColor: Colors.white),
+                  child: Text("Can't decide? Help us decide", style: T.body(size: 14, weight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.9))),
+                ),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _decide(false, MediaQuery.sizeOf(context).width),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.14),
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.45)),
+                    ),
+                    icon: const PhosphorIcon(PhosphorIconsBold.x, size: 18),
+                    label: const Text('Skip'),
+                  ),
+                ),
+                const SizedBox(width: Tok.s12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _decide(true, MediaQuery.sizeOf(context).width),
+                    style: FilledButton.styleFrom(backgroundColor: Tok.careemMint, foregroundColor: Tok.careemDark),
+                    icon: const PhosphorIcon(PhosphorIconsFill.heart, size: 18),
+                    label: const Text('Like'),
+                  ),
+                ),
+              ]),
+            ]),
           ),
-        ],
-      ]),
+        ]);
+      }),
     );
   }
 }
@@ -454,80 +503,109 @@ class _Stamp extends StatelessWidget {
       );
 }
 
+/// Full-screen card: photo edge to edge, faded Careem green all around, name bottom-left, then the description,
+/// the Careem Plus badge and (if there is one) the red discount.
 class _CardFace extends StatelessWidget {
-  const _CardFace({super.key, required this.card});
+  const _CardFace({super.key, required this.card, required this.bottomInset});
   final SwipeCard card;
+  final double bottomInset;
+
+  static const _discountRed = Color(0xFFD14B5E);
 
   @override
   Widget build(BuildContext context) {
     final isRest = card.level == SwipeLevel.restaurant;
     final tagLabel = card.cuisine.isNotEmpty ? card.cuisine : (isRest ? 'Restaurant' : 'Category');
-    return Container(
-      decoration: BoxDecoration(
-        color: Tok.card,
-        borderRadius: BorderRadius.circular(Tok.radius),
-        border: Border.all(color: Tok.border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 32, offset: const Offset(0, 12))],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(
-          child: FoodImage(
-            url: card.imageUrl,
-            seed: tagLabel,
-            label: card.title,
-            iconSize: 56,
+    final desc = isRest ? card.description : card.subtitle;
+    final white = Colors.white;
+    return Stack(fit: StackFit.expand, children: [
+      const ColoredBox(color: Tok.careemDark),
+      FoodImage(url: card.imageUrl, seed: tagLabel, label: card.title, iconSize: 72),
+      // Green fade: top and bottom...
+      DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Tok.careemDark.withValues(alpha: 0.80),
+              Tok.careemGreen.withValues(alpha: 0.22),
+              Tok.careemGreen.withValues(alpha: 0.10),
+              Tok.careemDark.withValues(alpha: 0.72),
+              Tok.careemDark.withValues(alpha: 0.96),
+            ],
+            stops: const [0, 0.2, 0.45, 0.7, 1],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(Tok.s16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Tag(tagLabel, colors: pastelFor(tagLabel)),
-              if (card.rating != null) ...[
-                const Spacer(),
-                const PhosphorIcon(PhosphorIconsFill.star, size: 14, color: Tok.ink),
-                const SizedBox(width: 4),
-                Text(card.rating!.toStringAsFixed(1), style: T.mono(size: 12.5, color: Tok.ink)),
-              ],
-              if (card.etaMinutes != null) ...[
-                const SizedBox(width: Tok.s12),
-                const PhosphorIcon(PhosphorIconsBold.clock, size: 13, color: Tok.secondary),
-                const SizedBox(width: 4),
-                Text('${card.etaMinutes} min', style: T.mono(size: 12)),
-              ],
-            ]),
-            const SizedBox(height: Tok.s8),
-            Text(card.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.display(isRest ? 26 : 30)),
-            if (isRest && card.description.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(card.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.secondary(size: 13.5)),
-            ] else if (!isRest && card.subtitle.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(card.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.secondary(size: 14)),
+      ),
+      // ...and the left and right edges.
+      DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Tok.careemGreen.withValues(alpha: 0.50),
+              Colors.transparent,
+              Colors.transparent,
+              Tok.careemGreen.withValues(alpha: 0.50),
             ],
-            if (isRest && card.topDishes.isNotEmpty) ...[
-              const SizedBox(height: Tok.s12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final dish in card.topDishes.take(3))
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Tok.wash,
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(color: Tok.border),
-                      ),
-                      child: Text(dish, style: T.body(size: 12, color: Tok.ink).copyWith(height: 1.1)),
-                    ),
-                ],
-              ),
+            stops: const [0, 0.25, 0.75, 1],
+          ),
+        ),
+      ),
+      Positioned(
+        left: 24,
+        right: 24,
+        bottom: bottomInset,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Text(tagLabel.toUpperCase(), style: T.tag(Tok.careemMint)),
+            if (card.rating != null) ...[
+              const SizedBox(width: 12),
+              const PhosphorIcon(PhosphorIconsFill.star, size: 13, color: Colors.white),
+              const SizedBox(width: 4),
+              Text(card.rating!.toStringAsFixed(1), style: T.mono(size: 12.5, color: white)),
+            ],
+            if (card.etaMinutes != null) ...[
+              const SizedBox(width: 12),
+              PhosphorIcon(PhosphorIconsBold.clock, size: 13, color: white.withValues(alpha: 0.85)),
+              const SizedBox(width: 4),
+              Text('${card.etaMinutes} min', style: T.mono(size: 12.5, color: white.withValues(alpha: 0.85))),
             ],
           ]),
-        ),
-      ]),
-    );
+          const SizedBox(height: 8),
+          Text(card.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.display(isRest ? 50 : 56).copyWith(color: white)),
+          if (desc.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(desc, maxLines: 3, overflow: TextOverflow.ellipsis, style: T.body(size: 15, weight: FontWeight.w500, color: white.withValues(alpha: 0.88))),
+          ],
+          if (isRest && (card.careemPlus || card.discountPct != null)) ...[
+            const SizedBox(height: 14),
+            Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              if (card.careemPlus)
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(color: Tok.careemMint, borderRadius: BorderRadius.circular(6)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const PhosphorIcon(PhosphorIconsFill.smiley, size: 13, color: Tok.careemDark),
+                      Text('+', style: T.body(size: 12, weight: FontWeight.w800, color: Tok.careemDark).copyWith(height: 1.0)),
+                    ]),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Careem Plus', style: T.body(size: 13.5, weight: FontWeight.w700, color: white)),
+                ]),
+              if (card.discountPct != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(color: _discountRed, borderRadius: BorderRadius.circular(8)),
+                  child: Text('${card.discountPct}% off', style: T.body(size: 14, weight: FontWeight.w800, color: white).copyWith(height: 1.1)),
+                ),
+            ]),
+          ],
+        ]),
+      ),
+    ]);
   }
 }

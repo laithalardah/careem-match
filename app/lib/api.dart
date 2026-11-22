@@ -321,6 +321,7 @@ class MockApi implements Api {
       'eta_minutes': 24,
       'image_url': 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&q=80',
       'top_dishes': ['Chicken Shawarma Wrap', 'Falafel Plate', 'Mixed Grill Platter'],
+      'discount_pct': 40, 'careem_plus': true,
     },
     {
       'id': '30103',
@@ -332,6 +333,7 @@ class MockApi implements Api {
       'eta_minutes': 28,
       'image_url': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80',
       'top_dishes': ['Margherita Pizza', 'Pepperoni Pizza', 'Truffle Garlic Knots'],
+      'discount_pct': 60, 'careem_plus': true,
     },
     {
       'id': '30102',
@@ -343,6 +345,7 @@ class MockApi implements Api {
       'eta_minutes': 32,
       'image_url': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80',
       'top_dishes': ['Salmon Avocado Roll (8 pcs)', 'Chicken Katsu Bento', 'Miso Soup'],
+      'careem_plus': true,
     },
     {
       'id': '30104',
@@ -354,6 +357,7 @@ class MockApi implements Api {
       'eta_minutes': 20,
       'image_url': 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=800&q=80',
       'top_dishes': ['Classic Syrniki with Sour Cream', 'Cappuccino', 'Berry Granola Bowl'],
+      'discount_pct': 25, 'careem_plus': false,
     },
     {
       'id': '30105',
@@ -365,6 +369,7 @@ class MockApi implements Api {
       'eta_minutes': 22,
       'image_url': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
       'top_dishes': ['Chicken Caesar Bowl', 'Avocado Quinoa Salad', 'Green Glow Juice'],
+      'careem_plus': true,
     },
     {
       'id': '30106',
@@ -376,6 +381,7 @@ class MockApi implements Api {
       'eta_minutes': 19,
       'image_url': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80',
       'top_dishes': ['Saj Shawarma Box', 'Loaded Toum Fries', 'Hummus & Pita'],
+      'discount_pct': 50, 'careem_plus': true,
     },
   ];
 

@@ -103,7 +103,7 @@ def test_categories_then_restaurants(h, client):
     names = {c["title"] for c in deck["cards"]}
     assert names == {"Shawarma Station", "Pizza Piazza"}  # only liked categories
     card = next(c for c in deck["cards"] if c["title"] == "Pizza Piazza")
-    assert set(card) == {"id", "level", "title", "description", "cuisine", "rating", "eta_minutes", "image_url", "top_dishes"}
+    assert set(card) == {"id", "level", "title", "description", "cuisine", "rating", "eta_minutes", "image_url", "top_dishes", "discount_pct", "careem_plus"}
     assert "Margherita Pizza" in card["top_dishes"] and card["description"].startswith("Italian")
 
 
