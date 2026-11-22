@@ -13,7 +13,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 import config
+import demo
 import engine  # noqa: F401  (registers the matching hook)
+import history
 import rooms
 from catalog import get_catalog
 from rooms import ApiError
@@ -110,8 +112,20 @@ async def start(code: str, body: Actor):
     rooms.require_host(room, body.participant_id)
     rooms.require_stage(room, "settings")
     catalog = await get_catalog()
-    rooms.start(room, body.participant_id, catalog)
+    histories = await history.for_room(room, catalog)
+    rooms.start(room, body.participant_id, catalog, histories, history.group_prior(histories))
+    demo.ensure_bots_running(room)
     return {"ok": True}
+
+
+@app.post("/rooms/{code}/demo-friends")
+async def demo_friends(code: str, body: DemoFriends):
+    room = rooms.get_room(code)
+    rooms.require_host(room, body.participant_id)
+    if not config.demo_enabled():
+        raise ApiError(403, "Demo friends are turned off (start the backend with DEMO=1).")
+    added = demo.add_friends(room, body.count, body.scenario, await get_catalog())
+    return {"ok": True, "added": [{"id": p.id, "name": p.name} for p in added]}
 
 
 # ── Swiping ──────────────────────────────────────────────────────────────────

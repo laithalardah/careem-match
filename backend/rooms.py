@@ -50,6 +50,8 @@ class Room:
     order: dict | None = None
     forced: dict[str, Any] | None = None  # e.g. {"restaurant_id": 30101} after a wheel spin
     catalog: Catalog | None = None
+    history: dict[str, Any] = field(default_factory=dict)  # pid -> history.History
+    prior: dict[str, dict] = field(default_factory=lambda: {"category": {}, "restaurant": {}})
     created_at: float = field(default_factory=time.time)
     tasks: list = field(default_factory=list)
 
@@ -151,7 +153,7 @@ def set_meal(room: Room, pid: str, meal: str) -> None:
     room.touch()
 
 
-def start(room: Room, pid: str, catalog: Catalog) -> None:
+def start(room: Room, pid: str, catalog: Catalog, histories: dict | None = None, prior: dict | None = None) -> None:
     require_host(room, pid)
     require_stage(room, "settings")
     if not room.meal:
@@ -160,6 +162,10 @@ def start(room: Room, pid: str, catalog: Catalog) -> None:
     if not cards:
         raise ApiError(409, f"No open restaurants for {room.meal} nearby. Try another meal.")
     room.catalog = catalog
+    room.history = histories or {}
+    room.prior = prior or {"category": {}, "restaurant": {}}
+    # Likely favourites first (stable sort keeps the "most restaurants" order for ties).
+    cards.sort(key=lambda c: -room.prior["category"].get(c["title"], 0))
     room.cards = {"category": cards}
     room.swipes = {p: {} for p in room.participants}
     room.level, room.stage = "category", "swiping"
@@ -215,6 +221,7 @@ def _maybe_advance(room: Room) -> None:
         liked = liked_card_ids(room, "category")
         titles = {c["title"] for c in room.cards["category"] if c["id"] in liked}
         deck = room.catalog.restaurant_cards(titles, room.meal) if (room.catalog and titles) else []
+        deck.sort(key=lambda c: -room.prior["restaurant"].get(int(c["id"]), 0))
         if not deck:
             finish_no_match(room, "Nobody liked a category with an open restaurant.")
             return
