@@ -345,6 +345,7 @@ class Room {
   final RoomSettings settings;
   final List<Participant> participants;
   final DisputeState? dispute;
+  final OrderResult? order; // set once the host sent everyone to the restaurant (guests read it here)
   final int serverOffsetMs; // clientNow - serverDate (approx)
 
   const Room({
@@ -358,6 +359,7 @@ class Room {
     this.settings = const RoomSettings(),
     this.participants = const [],
     this.dispute,
+    this.order,
     this.serverOffsetMs = 0,
   });
 
@@ -380,6 +382,7 @@ class Room {
         settings: RoomSettings.fromJson(j['settings'] as Map<String, dynamic>?),
         participants: [for (final p in (j['participants'] ?? const []) as List) Participant.fromJson(p as Map<String, dynamic>)],
         dispute: j['dispute'] == null ? null : DisputeState.fromJson(j['dispute'] as Map<String, dynamic>),
+        order: j['order'] == null ? null : OrderResult.fromJson(j['order'] as Map<String, dynamic>),
         serverOffsetMs: serverOffsetMs,
       );
 
@@ -394,6 +397,7 @@ class Room {
         'settings': settings.toJson(),
         'participants': [for (final p in participants) p.toJson()],
         'dispute': dispute?.toJson(),
+        'order': order?.toJson(),
       };
 }
 
@@ -655,38 +659,55 @@ class RoomResult {
       );
 }
 
+/// Hand-off to Careem's own group order (v2.2): where each group goes. No dishes or prices.
 class OrderGroupStatus {
   final String groupId;
-  final String status;
-  final Map<String, dynamic> priceBreakdown;
+  final String status; // "go" | "failed"
+  final String restaurantName;
   final String? restaurantLink;
   final String message;
 
   const OrderGroupStatus({
     required this.groupId,
     required this.status,
-    this.priceBreakdown = const {},
+    this.restaurantName = '',
     this.restaurantLink,
     this.message = '',
   });
 
   factory OrderGroupStatus.fromJson(Map<String, dynamic> j) => OrderGroupStatus(
         groupId: '${j['group_id'] ?? ''}',
-        status: (j['status'] ?? 'basket_ready') as String,
-        priceBreakdown: Map<String, dynamic>.from((j['price_breakdown'] ?? const {}) as Map),
+        status: (j['status'] ?? 'go') as String,
+        restaurantName: (j['restaurant_name'] ?? '') as String,
         restaurantLink: j['restaurant_link'] as String?,
         message: (j['message'] ?? '') as String,
       );
+
+  Map<String, dynamic> toJson() => {
+        'group_id': groupId,
+        'status': status,
+        'restaurant_name': restaurantName,
+        'restaurant_link': restaurantLink,
+        'message': message,
+      };
 }
 
 class OrderResult {
-  final String status; // "basket_ready" | "go" | "failed"
+  final String status; // "go" | "failed"
+  final String message;
   final List<OrderGroupStatus> groups;
 
-  const OrderResult({required this.status, this.groups = const []});
+  const OrderResult({required this.status, this.message = '', this.groups = const []});
 
   factory OrderResult.fromJson(Map<String, dynamic> j) => OrderResult(
-        status: (j['status'] ?? 'basket_ready') as String,
+        status: (j['status'] ?? 'go') as String,
+        message: (j['message'] ?? '') as String,
         groups: [for (final g in (j['groups'] ?? const []) as List) OrderGroupStatus.fromJson(g as Map<String, dynamic>)],
       );
+
+  Map<String, dynamic> toJson() => {
+        'status': status,
+        'message': message,
+        'groups': [for (final g in groups) g.toJson()],
+      };
 }

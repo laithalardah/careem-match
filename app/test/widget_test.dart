@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:careem_match/api.dart';
 import 'package:careem_match/main.dart';
 import 'package:careem_match/models.dart';
+import 'package:careem_match/room_controller.dart';
 import 'package:careem_match/storage.dart';
 
 void _setMobileViewport(WidgetTester tester) {
@@ -21,6 +22,92 @@ Future<void> _tapLike(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 50)); // flush async swipe callback
 }
 
+/// A backend that is already in the "ordered" stage, as a guest (not the host) would read it.
+class _OrderedApi extends MockApi {
+  _OrderedApi() : super(fastDemo: true);
+
+  static final _room = <String, dynamic>{
+    'room_code': 'ABC123',
+    'mode': 'food',
+    'stage': 'ordered',
+    'version': 9,
+    'host_id': 'host1',
+    'join_url': '',
+    'level': null,
+    'settings': {'meal': 'dinner'},
+    'participants': [
+      {'id': 'host1', 'name': 'Awni', 'is_host': true, 'is_bot': false, 'progress': {'level': null, 'swiped': 0, 'total': 0, 'done': true}},
+      {'id': 'guest1', 'name': 'Layla', 'is_host': false, 'is_bot': false, 'progress': {'level': null, 'swiped': 0, 'total': 0, 'done': true}},
+    ],
+    'dispute': null,
+    'order': {
+      'status': 'go',
+      'message': 'Head to Shawarma Station in Careem and start a group order.',
+      'groups': [
+        {
+          'group_id': 'g1',
+          'status': 'go',
+          'restaurant_name': 'Shawarma Station',
+          'restaurant_link': 'careemfood://restaurants/30101',
+          'message': 'Open Shawarma Station in Careem and start a group order for Awni and Layla. Everyone picks their own dishes there.',
+        },
+      ],
+    },
+  };
+
+  static final _result = <String, dynamic>{
+    'status': 'ready',
+    'resolution': {'type': 'consensus'},
+    'groups': [
+      {
+        'group_id': 'g1',
+        'restaurant': {'id': 30101, 'name': 'Shawarma Station', 'image_url': null, 'cuisine': 'Shawarma', 'rating': 4.6, 'link': 'careemfood://restaurants/30101'},
+        'participant_ids': ['host1', 'guest1'],
+        'basket': [],
+        'total_price': 0,
+        'currency': 'AED',
+        'reasoning': 'Shawarma Station was liked by 2 of 2.',
+        'per_person': [],
+      },
+    ],
+    'basket': [],
+    'total_price': 0,
+    'currency': 'AED',
+    'reasoning': 'Shawarma Station was liked by 2 of 2.',
+    'per_person': [],
+    'agent_trace': [],
+  };
+
+  @override
+  Future<HealthInfo> health() async => const HealthInfo(status: 'ok', demo: false);
+
+  @override
+  Future<Room> getRoom(String code, {String? participantId}) async => Room.fromJson(_room);
+
+  @override
+  Future<RoomResult> getResult(String code) async => RoomResult.fromJson(_result);
+}
+
+/// The first swipe fails (network blip), later ones work.
+class _FlakyApi extends MockApi {
+  _FlakyApi() : super(fastDemo: true);
+  int failuresLeft = 1;
+
+  @override
+  Future<SwipeResponse> swipe(
+    String code, {
+    required String participantId,
+    required SwipeLevel level,
+    required String cardId,
+    required bool liked,
+  }) async {
+    if (failuresLeft > 0) {
+      failuresLeft--;
+      throw Exception('offline');
+    }
+    return super.swipe(code, participantId: participantId, level: level, cardId: cardId, liked: liked);
+  }
+}
 void main() {
   testWidgets('hub opens Mode screen, creates room, shows crown on host, adds demo friends, switches stages', (tester) async {
     _setMobileViewport(tester);
@@ -105,7 +192,10 @@ void main() {
     }
 
     expect(find.text('EVERYONE AGREED'), findsOneWidget);
-    expect(find.text('WHO GETS WHAT'), findsOneWidget);
+    // v2.2: swiping chooses the restaurant only. No dishes, no prices, no totals.
+    expect(find.text('WHO GETS WHAT'), findsNothing);
+    expect(find.textContaining('AED'), findsNothing);
+    expect(find.textContaining('JOD'), findsNothing);
 
     // Scroll to Why this one & Agent trace, expand trace and verify failed call + re-plan visibility.
     final listScroll = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
@@ -117,16 +207,17 @@ void main() {
     await tester.scrollUntilVisible(find.text('FAILED'), 200, scrollable: listScroll);
     expect(find.text('FAILED'), findsOneWidget);
 
-    // Host opens Create group order bottom sheet and confirms -> Order ready -> Go to {restaurant}.
-    await tester.tap(find.text('Create group order'));
-    await tester.pumpAndSettle();
-    expect(find.text('Approve & create group order'), findsOneWidget);
-    await tester.tap(find.text('Approve & create group order'));
+    // Host taps one button (no approval sheet) -> everyone is sent to the restaurant in Careem.
+    expect(find.text('Create group order'), findsNothing);
+    await tester.tap(find.text('Start group order in Careem'));
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('ORDER READY'), findsOneWidget);
+    expect(find.text('GROUP ORDER'), findsOneWidget);
     expect(find.textContaining('Go to '), findsWidgets);
+    expect(find.textContaining('start a group order and share it'), findsOneWidget);
+    expect(find.textContaining('in Careem'), findsWidgets);
   });
 
   testWidgets('guest joins via /join/:code with inline validation and sees Waiting for the host + waiting state', (tester) async {
@@ -213,7 +304,7 @@ void main() {
     expect(find.textContaining('wins'), findsOneWidget);
   });
 
-  testWidgets('dispute resolved by split allows moving groups, confirming, and shows 2-group result + Create 2 orders', (tester) async {
+  testWidgets('dispute resolved by split allows moving groups, confirming, and shows a 2-group result and sends each group to its restaurant', (tester) async {
     _setMobileViewport(tester);
     final api = MockApi(fastDemo: true)..forceDispute = true;
     final created = await api.createRoom(mode: RoomMode.food, hostName: 'Awni');
@@ -249,16 +340,20 @@ void main() {
 
     expect(find.text('SPLIT INTO GROUPS'), findsOneWidget);
     expect(find.text('Split into 2 groups.'), findsOneWidget);
-    expect(find.text('Create 2 orders'), findsOneWidget);
+    expect(find.text('Send everyone to their restaurant'), findsOneWidget);
+    expect(find.text('Grand total'), findsNothing);
+    expect(find.textContaining('Total'), findsNothing);
 
-    // Open Create 2 orders bottom sheet.
-    await tester.tap(find.text('Create 2 orders'));
-    await tester.pumpAndSettle();
-    expect(find.text('Create 2 group orders'), findsOneWidget);
-    expect(find.text('Grand total'), findsOneWidget);
+    // One tap sends each group to its own restaurant; the host sees their own group's Go-to screen.
+    await tester.tap(find.text('Send everyone to their restaurant'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('GROUP ORDER'), findsOneWidget);
+    expect(find.textContaining('Go to '), findsWidgets);
   });
 
-  testWidgets('dineout mode has no basket and uses Go there flow; host sees early dispute after 5 swipes', (tester) async {
+  testWidgets('dineout mode has no basket and uses the send-everyone-there flow; host sees early dispute after 5 swipes', (tester) async {
     _setMobileViewport(tester);
     final api = MockApi(fastDemo: true);
     final created = await api.createRoom(mode: RoomMode.dineout, hostName: 'Awni');
@@ -294,6 +389,48 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     }
     expect(find.text('WHO GETS WHAT'), findsNothing);
-    expect(find.text('Go there'), findsOneWidget);
+    expect(find.text('Send everyone there'), findsOneWidget);
+  });
+
+  testWidgets('a guest sees where to go after the host sends everyone to the restaurant', (tester) async {
+    _setMobileViewport(tester);
+    SessionStore.setParticipantId('ABC123', 'guest1'); // this tab is the guest, not the host
+    await tester.pumpWidget(CareemMatchApp(api: _OrderedApi(), initialLocation: '/room/ABC123'));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('GROUP ORDER'), findsOneWidget);
+    expect(find.text('Go to Shawarma Station.'), findsOneWidget);
+    expect(find.textContaining('Awni starts the group order in Careem'), findsOneWidget);
+    expect(find.text('Open Shawarma Station in Careem'), findsOneWidget);
+    expect(find.text('Layla (you)'), findsOneWidget);
+    // guests never get the host's button, and nothing about dishes or prices
+    expect(find.text('Start group order in Careem'), findsNothing);
+    expect(find.textContaining('AED'), findsNothing);
+  });
+
+  test('a swipe that failed to reach the server is sent again on the next poll', () async {
+    final api = _FlakyApi();
+    final created = await api.createRoom(mode: RoomMode.food, hostName: 'Awni');
+    SessionStore.setParticipantId(created.roomCode, created.participantId);
+    await api.addDemoFriends(created.roomCode, participantId: created.participantId, count: 1, scenario: 'consensus');
+    await api.nextStage(created.roomCode, participantId: created.participantId);
+    await api.startSwiping(created.roomCode, participantId: created.participantId);
+
+    final ctrl = RoomController(api: api, roomCode: created.roomCode, pollInterval: const Duration(hours: 1));
+    final cards = await api.getCards(created.roomCode, participantId: created.participantId);
+    final first = cards.cards.first;
+
+    Future<int> hostSwipes() async {
+      final room = await api.getRoom(created.roomCode, participantId: created.participantId);
+      return room.participantById(created.participantId)!.progress.swiped;
+    }
+
+    expect(await hostSwipes(), 0);
+    await ctrl.swipeCard(SwipeLevel.category, first.id, true); // fails (offline)
+    expect(await hostSwipes(), 0);
+    await ctrl.retryResult(); // next poll flushes the pending swipe
+    expect(await hostSwipes(), 1);
+    ctrl.dispose();
   });
 }

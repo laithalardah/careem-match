@@ -27,7 +27,15 @@ abstract class Api {
   Future<void> moveSplitGroup(String code, {required String participantId, required int restaurantId});
   Future<void> confirmSplit(String code, {required String participantId});
   Future<RoomResult> getResult(String code);
+
+  /// Host: send everyone to the chosen restaurant (Careem group order hand-off). Never charges or orders.
   Future<OrderResult> createOrder(String code, {required String participantId});
+
+  /// Host: new round with the same people (after "no match", or to try another meal).
+  Future<void> restartRoom(String code, {required String participantId});
+
+  /// Host: run the matching again after it failed.
+  Future<void> retryMatch(String code, {required String participantId});
 }
 
 /// Pure-Dart RFC-1123 HTTP Date header parser (works on Web and VM).
@@ -74,12 +82,17 @@ class HttpApi implements Api {
 
   Map<String, dynamic> _decode(http.Response r) {
     if (r.statusCode >= 400) {
-      String detail = r.body;
+      // Show the server's readable message as is ("Pick a meal first."), not "HTTP 409: ...".
+      var detail = 'Something went wrong (error ${r.statusCode}). Please try again.';
       try {
         final j = jsonDecode(utf8.decode(r.bodyBytes));
-        if (j is Map && j['detail'] != null) detail = '${j['detail']}';
+        if (j is Map && j['detail'] is String) {
+          detail = j['detail'] as String;
+        } else if (j is Map && j['detail'] is List) {
+          detail = 'Please check what you entered and try again.'; // request validation errors
+        }
       } catch (_) {}
-      throw ApiException('HTTP ${r.statusCode}: $detail', r.statusCode);
+      throw ApiException(detail, r.statusCode);
     }
     if (r.bodyBytes.isEmpty) return const {};
     return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
@@ -213,6 +226,16 @@ class HttpApi implements Api {
   Future<OrderResult> createOrder(String code, {required String participantId}) async => OrderResult.fromJson(_decode(
         await http.post(_u('/rooms/$code/order'), headers: _json, body: jsonEncode({'participant_id': participantId})),
       ));
+
+  @override
+  Future<void> restartRoom(String code, {required String participantId}) async {
+    _decode(await http.post(_u('/rooms/$code/restart'), headers: _json, body: jsonEncode({'participant_id': participantId})));
+  }
+
+  @override
+  Future<void> retryMatch(String code, {required String participantId}) async {
+    _decode(await http.post(_u('/rooms/$code/retry'), headers: _json, body: jsonEncode({'participant_id': participantId})));
+  }
 }
 
 class ApiException implements Exception {
@@ -363,7 +386,7 @@ class MockApi implements Api {
       'cuisine': 'Arabic',
       'rating': 4.6,
       'image_url': 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=800&q=80',
-      'link': 'https://www.careem.com/food/shawarma-station',
+      'link': 'careemfood://restaurants/30101',
       'dishes': [
         {'name': 'Chicken Shawarma Wrap', 'price': 3.50, 'options': ['Extra garlic toum', 'Saj bread']},
         {'name': 'Falafel Plate', 'price': 4.25, 'options': ['Tahini dip']},
@@ -376,7 +399,7 @@ class MockApi implements Api {
       'cuisine': 'Italian',
       'rating': 4.5,
       'image_url': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80',
-      'link': 'https://www.careem.com/food/pizza-piazza',
+      'link': 'careemfood://restaurants/30103',
       'dishes': [
         {'name': 'Margherita Pizza', 'price': 7.50, 'options': ['Classic 12" crust']},
         {'name': 'Pepperoni Pizza', 'price': 8.75, 'options': ['Classic 12" crust', 'Chili honey']},
@@ -389,7 +412,7 @@ class MockApi implements Api {
       'cuisine': 'Japanese',
       'rating': 4.4,
       'image_url': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&q=80',
-      'link': 'https://www.careem.com/food/sakura-sushi-lab',
+      'link': 'careemfood://restaurants/30102',
       'dishes': [
         {'name': 'Salmon Avocado Roll (8 pcs)', 'price': 8.25, 'options': ['Low-sodium soy']},
         {'name': 'Chicken Katsu Bento', 'price': 9.50, 'options': ['Steamed rice']},
@@ -401,7 +424,7 @@ class MockApi implements Api {
       'cuisine': 'Breakfast',
       'rating': 4.8,
       'image_url': 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=800&q=80',
-      'link': 'https://www.careem.com/food/morning-syrniki-cafe',
+      'link': 'careemfood://restaurants/30104',
       'dishes': [
         {'name': 'Classic Syrniki with Sour Cream', 'price': 6.50, 'options': ['Warm berry compote']},
         {'name': 'Cappuccino', 'price': 3.75, 'options': ['Oat milk']},
@@ -413,7 +436,7 @@ class MockApi implements Api {
       'cuisine': 'Healthy',
       'rating': 4.3,
       'image_url': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
-      'link': 'https://www.careem.com/food/green-bowl-co',
+      'link': 'careemfood://restaurants/30105',
       'dishes': [
         {'name': 'Chicken Caesar Bowl', 'price': 7.25, 'options': ['Dressing on the side']},
         {'name': 'Avocado Quinoa Salad', 'price': 6.75, 'options': ['Lemon olive oil']},
@@ -716,44 +739,19 @@ class MockApi implements Api {
     }
 
     final first = groupsJson.first;
-    final firstRestId = (first['restaurant'] as Map<String, dynamic>)['id'];
-    final trace = [
-      {
-        'iteration': 1,
-        'tool': 'food_merchant_search',
-        'input': {'location': 'Amman', 'meal': (room['settings'] as Map)['meal'] ?? 'dinner'},
-        'output_summary': 'Found ${groupsJson.length == 1 ? 'top candidate' : '${groupsJson.length} group restaurants'} open in Amman.',
-        'failed': false,
-      },
-      {
-        'iteration': 2,
-        'tool': 'food_get_restaurant_menu',
-        'input': {'restaurant_id': firstRestId},
-        'output_summary': 'Verified menu items and live pricing.',
-        'failed': false,
-      },
-      {
-        'iteration': 3,
-        'tool': 'cart_add_items',
-        'input': {'merchant_id': firstRestId, 'items': ['primary_selection']},
-        'output_summary': 'Failed: required modifier group missing on main item. Re-planning.',
-        'failed': true,
-      },
-      {
-        'iteration': 4,
-        'tool': 'food_get_items_options',
-        'input': {'restaurant_id': firstRestId},
-        'output_summary': 'Loaded required options and picked valid house defaults.',
-        'failed': false,
-      },
-      {
-        'iteration': 5,
-        'tool': 'cart_get_basket_price',
-        'input': {'merchant_id': firstRestId, 'groups': groupsJson.length},
-        'output_summary': 'Basket priced cleanly (${groupsJson.length == 1 ? '${first['total_price']} JOD' : '${groupsJson.length} separate orders'}).',
-        'failed': false,
-      },
-    ];
+    // The agent only chooses restaurants now: check each one is open, then submit the choice.
+    // The first lookup fails once so the trace shows a retry, like the real agent does.
+    var n = 0;
+    final trace = <Map<String, dynamic>>[];
+    for (final g in groupsJson) {
+      final r = g['restaurant'] as Map<String, dynamic>;
+      trace.add({'iteration': ++n, 'tool': 'bedrock_agent', 'input': {'model': 'claude-sonnet-5-5'}, 'output_summary': 'Agent started: reading the votes and the shortlist.', 'failed': false, 'group_id': g['group_id']});
+      if (g == first) {
+        trace.add({'iteration': ++n, 'tool': 'food_get_restaurant_menu', 'input': {'restaurant_id': r['id']}, 'output_summary': 'Failed: upstream timeout. Retrying.', 'failed': true, 'group_id': g['group_id']});
+      }
+      trace.add({'iteration': ++n, 'tool': 'food_get_restaurant_menu', 'input': {'restaurant_id': r['id']}, 'output_summary': '${r['name']}: open.', 'failed': false, 'group_id': g['group_id']});
+      trace.add({'iteration': ++n, 'tool': 'submit_plan', 'input': {'restaurant_id': r['id']}, 'output_summary': 'Choice accepted: ${r['name']}.', 'failed': false, 'group_id': g['group_id']});
+    }
 
     room['stage'] = 'matching';
     room['_matching_started_at'] = _now;
@@ -764,9 +762,10 @@ class MockApi implements Api {
       'resolution': {'type': resolutionType},
       'groups': groupsJson,
       'restaurant': groupsJson.length == 1 ? first['restaurant'] : null,
-      'basket': groupsJson.length == 1 ? first['basket'] : const [],
-      'total_price': groupsJson.fold<double>(0, (s, g) => s + ((g['total_price'] as num).toDouble())),
-      'currency': 'JOD',
+      // No dishes or prices: everyone picks their own in Careem's group order.
+      'basket': const [],
+      'total_price': 0,
+      'currency': 'AED',
       'reasoning': groupsJson.length == 1
           ? first['reasoning']
           : 'You split into ${groupsJson.length} groups so everyone gets their top craving with zero compromise.',
@@ -784,32 +783,14 @@ class MockApi implements Api {
     String mode,
   ) {
     final rest = _menuByRestaurant[rid] ?? _menuByRestaurant[30101]!;
-    final dishes = [for (final d in rest['dishes'] as List) d as Map<String, dynamic>];
-    final basket = <Map<String, dynamic>>[];
     final perPerson = <Map<String, dynamic>>[];
-    var total = 0.0;
 
-    for (var i = 0; i < pids.length; i++) {
-      final pid = pids[i];
+    for (final pid in pids) {
       final person = allParticipants.firstWhere((p) => '${p['id']}' == pid, orElse: () => {'id': pid, 'name': 'Guest'});
-      final name = '${person['name']}';
-      final dish = dishes[i % dishes.length];
-      final price = (dish['price'] as num).toDouble();
-      if (mode == 'food') {
-        total += price;
-        basket.add({
-          'participant_id': pid,
-          'name': name,
-          'dish_name': dish['name'],
-          'price': price,
-          'image_url': rest['image_url'],
-          'options': dish['options'],
-        });
-      }
       perPerson.add({
         'participant_id': pid,
-        'name': name,
-        'why': 'Matches $name\'s swipe for ${rest['cuisine'].toString().toLowerCase()} with ${dish['name']}.',
+        'name': '${person['name']}',
+        'why': 'You liked ${rest['name']}.',
       });
     }
 
@@ -824,10 +805,10 @@ class MockApi implements Api {
         'link': rest['link'],
       },
       'participant_ids': pids,
-      'basket': basket,
-      'total_price': double.parse(total.toStringAsFixed(2)),
-      'currency': 'JOD',
-      'reasoning': '${rest['name']} satisfies everyone in this group with fast prep and available favorites.',
+      'basket': const [],
+      'total_price': 0,
+      'currency': 'AED',
+      'reasoning': '${rest['name']} was liked by the group and nobody vetoed it, so everyone can order from one place.',
       'per_person': perPerson,
     };
   }
@@ -1104,21 +1085,58 @@ class MockApi implements Api {
     final room = _readRoom(code);
     final res = room['_result'] as Map<String, dynamic>?;
     final groups = [for (final g in ((res?['groups'] ?? const []) as List)) g as Map<String, dynamic>];
-    final isDineOut = room['mode'] == 'dineout';
-    final orderStatus = isDineOut ? 'go' : 'basket_ready';
+    if (groups.isEmpty) throw const ApiException('There is no restaurant to go to yet.', 409);
+    if (room['host_id'] != participantId) throw const ApiException('Only the host can do that.', 403);
+    final participants = [for (final p in room['participants'] as List) p as Map<String, dynamic>];
+    String names(List ids) {
+      final n = [for (final id in ids) '${participants.firstWhere((p) => '${p['id']}' == '$id', orElse: () => {'name': 'Guest'})['name']}'];
+      return n.length <= 1 ? n.join() : '${n.sublist(0, n.length - 1).join(', ')} and ${n.last}';
+    }
+
     final outGroups = [
       for (final g in groups)
         {
           'group_id': g['group_id'],
-          'status': orderStatus,
-          'price_breakdown': {'total': g['total_price'], 'currency': g['currency']},
+          'status': 'go',
+          'restaurant_name': (g['restaurant'] as Map)['name'],
           'restaurant_link': (g['restaurant'] as Map)['link'],
-          'message': isDineOut ? 'Directions ready for ${(g['restaurant'] as Map)['name']}.' : 'Group basket ready in Careem Food.',
+          'price_breakdown': null,
+          'message': 'Open ${(g['restaurant'] as Map)['name']} in Careem and start a group order for ${names(g['participant_ids'] as List)}. Everyone picks their own dishes there.',
         },
     ];
     room['stage'] = 'ordered';
-    room['_order_result'] = {'status': orderStatus, 'groups': outGroups};
+    room['order'] = {
+      'status': 'go',
+      'groups': outGroups,
+      'message': groups.length == 1
+          ? 'Head to ${outGroups.first['restaurant_name']} in Careem and start a group order.'
+          : 'Each group heads to its own restaurant in Careem to start a group order.',
+    };
     _writeRoom(room);
-    return OrderResult.fromJson(room['_order_result'] as Map<String, dynamic>);
+    return OrderResult.fromJson(room['order'] as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> restartRoom(String code, {required String participantId}) async {
+    final room = _readRoom(code);
+    if (room['host_id'] != participantId) throw const ApiException('Only the host can do that.', 403);
+    room['stage'] = 'settings';
+    room['level'] = null;
+    room['dispute'] = null;
+    room['order'] = null;
+    room['_result'] = null;
+    room['_swipes'] = <String, dynamic>{};
+    for (final p in room['participants'] as List) {
+      (p as Map<String, dynamic>)['progress'] = {'level': null, 'swiped': 0, 'total': 0, 'done': false};
+    }
+    _writeRoom(room);
+  }
+
+  @override
+  Future<void> retryMatch(String code, {required String participantId}) async {
+    final room = _readRoom(code);
+    if (room['host_id'] != participantId) throw const ApiException('Only the host can do that.', 403);
+    // The mock never fails, so there is nothing to retry.
+    throw const ApiException('There is nothing to retry.', 409);
   }
 }

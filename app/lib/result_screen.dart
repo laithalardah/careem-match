@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -87,86 +88,14 @@ class _ResultViewState extends State<ResultView> {
   int _selectedGroupIdx = 0;
   bool _whyOpen = false;
 
-  void _openOrderSheet(RoomResult res, RoomMode mode) {
-    final isDineOut = mode == RoomMode.dineout;
-    final groups = res.groups;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Tok.canvas,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Tok.radius))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(Tok.s24),
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(
-                isDineOut
-                    ? 'Confirm destination'
-                    : (groups.length > 1 ? 'Create ${groups.length} group orders' : 'Create group order'),
-                style: T.display(28),
-              ),
-              const SizedBox(height: Tok.s8),
-              Text(
-                isDineOut
-                    ? 'Everyone will get a link to their restaurant.'
-                    : 'Review each restaurant and basket below. This prepares the group basket — it will never charge or check out.',
-                style: T.secondary(size: 14),
-              ),
-              const SizedBox(height: Tok.s16),
-              for (final g in groups) ...[
-                Panel(
-                  padding: const EdgeInsets.all(Tok.s16),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Row(children: [
-                      Expanded(child: Text(g.restaurant.name, style: T.body(size: 16, weight: FontWeight.w700))),
-                      if (!isDineOut) Text(money(g.totalPrice, g.currency), style: T.mono(size: 13, color: Tok.ink)),
-                    ]),
-                    if (!isDineOut && g.basket.isNotEmpty) ...[
-                      const SizedBox(height: Tok.s8),
-                      for (final item in g.basket) ...[
-                        const Divider(height: Tok.s12),
-                        Row(children: [
-                          Expanded(child: Text('${item.name}: ${item.dishName}', style: T.body(size: 13.5))),
-                          Text(money(item.price, g.currency), style: T.mono(size: 12)),
-                        ]),
-                      ],
-                    ],
-                  ]),
-                ),
-                const SizedBox(height: Tok.s12),
-              ],
-              if (!isDineOut && groups.length > 1) ...[
-                Row(children: [
-                  Text('Grand total', style: T.body(size: 15, weight: FontWeight.w700)),
-                  const Spacer(),
-                  Text(money(res.grandTotal, res.displayCurrency), style: T.mono(size: 15, color: Tok.ink)),
-                ]),
-                const SizedBox(height: Tok.s16),
-              ],
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  widget.ctrl.submitOrder();
-                },
-                child: Text(
-                  isDineOut
-                      ? 'Go there'
-                      : (groups.length > 1 ? 'Approve & create ${groups.length} orders' : 'Approve & create group order'),
-                ),
-              ),
-              const SizedBox(height: Tok.s8),
-              OutlinedButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-            ]),
-          ),
-        ),
-      ),
-    );
+  /// Host: send everyone to the chosen restaurant, then open this host's own restaurant in Careem.
+  Future<void> _sendEveryone() async {
+    final out = await widget.ctrl.submitOrder();
+    if (out == null || !mounted) return;
+    final mine = widget.ctrl.myGroup();
+    final g = mine == null ? null : widget.ctrl.orderStatusFor(mine.groupId);
+    await openCareemLink(context, g?.restaurantLink ?? mine?.restaurant.link);
   }
-
   @override
   Widget build(BuildContext context) {
     final res = widget.ctrl.result;
@@ -180,9 +109,11 @@ class _ResultViewState extends State<ResultView> {
         tag: const Tag('No match', colors: Tok.yellow),
         title: 'No restaurant fits everyone.',
         body: res.reasoning.isEmpty ? 'Your picks did not overlap at any open restaurant.' : res.reasoning,
-        primaryLabel: 'Try again',
-        onPrimary: widget.ctrl.retryResult,
-        secondaryLabel: 'Start over',
+        isHost: widget.ctrl.isHost,
+        busy: widget.ctrl.busy,
+        primaryLabel: 'Swipe again',
+        onPrimary: widget.ctrl.restart, // same people, new round
+        secondaryLabel: 'Leave room',
         onSecondary: widget.onStartOver,
         trace: res.trace,
       );
@@ -191,11 +122,13 @@ class _ResultViewState extends State<ResultView> {
     if (res.status == ResultStatus.failed || res.groups.isEmpty) {
       return _ResultErrorView(
         tag: const Tag('Something went wrong', colors: Tok.red),
-        title: 'The agent could not finish.',
-        body: res.reasoning.isEmpty ? 'Retry to run matching again. Your swipes are saved.' : res.reasoning,
-        primaryLabel: 'Retry',
-        onPrimary: widget.ctrl.retryResult,
-        secondaryLabel: 'Start over',
+        title: 'The match could not finish.',
+        body: res.reasoning.isEmpty ? 'Try again. Your swipes are saved.' : res.reasoning,
+        isHost: widget.ctrl.isHost,
+        busy: widget.ctrl.busy,
+        primaryLabel: 'Try again',
+        onPrimary: widget.ctrl.retryMatch,
+        secondaryLabel: 'Leave room',
         onSecondary: widget.onStartOver,
         trace: res.trace,
       );
@@ -218,8 +151,6 @@ class _ResultViewState extends State<ResultView> {
             runSpacing: 6,
             children: [
               Tag(res.resolution.label, colors: res.resolution.type == 'split' ? Tok.blue : Tok.green),
-              if (multi && !isDineOut)
-                Text('Total ${money(res.grandTotal, res.displayCurrency)}', style: T.mono(size: 12, color: Tok.ink)),
             ],
           ),
           if (multi) ...[
@@ -258,12 +189,13 @@ class _ResultViewState extends State<ResultView> {
       ),
       const SizedBox(height: Tok.s12),
       if (isHost)
-        FilledButton(
-          onPressed: widget.ctrl.busy ? null : () => _openOrderSheet(res, room.mode),
-          child: Text(
+        FilledButton.icon(
+          onPressed: widget.ctrl.busy ? null : _sendEveryone,
+          icon: const PhosphorIcon(PhosphorIconsBold.arrowSquareOut, size: 18),
+          label: Text(
             isDineOut
-                ? 'Go there'
-                : (multi ? 'Create ${groups.length} orders' : 'Create group order'),
+                ? (multi ? 'Send everyone to their spot' : 'Send everyone there')
+                : (multi ? 'Send everyone to their restaurant' : 'Start group order in Careem'),
           ),
         )
       else
@@ -275,7 +207,7 @@ class _ResultViewState extends State<ResultView> {
             const SizedBox(width: Tok.s12),
             Expanded(
               child: Text(
-                isDineOut ? 'Waiting for the host to confirm' : 'Waiting for the host to create the group order',
+                isDineOut ? 'Waiting for the host to send everyone there' : 'Waiting for the host to start the group order',
                 style: T.body(size: 14.5, weight: FontWeight.w500),
               ),
             ),
@@ -354,12 +286,6 @@ class _GroupDetailSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rest = group.restaurant;
-    // Group basket items by participant
-    final byPerson = <String, List<BasketItem>>{};
-    for (final item in group.basket) {
-      byPerson.putIfAbsent(item.participantId, () => []).add(item);
-    }
-
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       ClipRRect(
         borderRadius: BorderRadius.circular(Tok.radius),
@@ -411,66 +337,6 @@ class _GroupDetailSection extends StatelessWidget {
               ]),
         ],
       ),
-      if (!isDineOut && group.basket.isNotEmpty) ...[
-        const SizedBox(height: Tok.s24),
-        Panel(
-          padding: const EdgeInsets.symmetric(horizontal: Tok.s16, vertical: Tok.s16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: Tok.s8),
-              child: Text('WHO GETS WHAT', style: T.tag(Tok.secondary)),
-            ),
-            for (final entry in byPerson.entries) ...[
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Tok.s12),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    ParticipantAvatar(
-                      id: entry.key,
-                      name: entry.value.first.name,
-                      isHost: room.participantById(entry.key)?.isHost == true,
-                      size: 28,
-                    ),
-                    const SizedBox(width: Tok.s8),
-                    Expanded(
-                      child: Text(
-                        entry.key == myId ? '${entry.value.first.name} (you)' : entry.value.first.name,
-                        style: T.body(size: 14, weight: FontWeight.w700),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 6),
-                  for (final item in entry.value)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 36, top: 2),
-                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(item.dishName, style: T.body(size: 14.5)),
-                            if (item.options.isNotEmpty)
-                              Text(item.options.join(' · '), style: T.secondary(size: 12)),
-                          ]),
-                        ),
-                        const SizedBox(width: Tok.s8),
-                        Text(money(item.price, group.currency), style: T.mono(size: 13, color: Tok.ink)),
-                      ]),
-                    ),
-                ]),
-              ),
-            ],
-            const Divider(height: 1, color: Tok.ink),
-            Padding(
-              padding: const EdgeInsets.only(top: Tok.s12),
-              child: Row(children: [
-                Text('Total', style: T.body(weight: FontWeight.w600)),
-                const Spacer(),
-                Text(money(group.totalPrice, group.currency), style: T.mono(size: 15, color: Tok.ink).copyWith(fontWeight: FontWeight.w600)),
-              ]),
-            ),
-          ]),
-        ),
-      ],
       if (group.perPerson.isNotEmpty) ...[
         const SizedBox(height: Tok.s16),
         const Divider(height: 1),
@@ -524,6 +390,8 @@ class _ResultErrorView extends StatelessWidget {
     required this.tag,
     required this.title,
     required this.body,
+    required this.isHost,
+    required this.busy,
     required this.primaryLabel,
     required this.onPrimary,
     required this.secondaryLabel,
@@ -533,6 +401,7 @@ class _ResultErrorView extends StatelessWidget {
 
   final Widget tag;
   final String title, body, primaryLabel, secondaryLabel;
+  final bool isHost, busy;
   final VoidCallback onPrimary, onSecondary;
   final List<TraceStep> trace;
 
@@ -551,100 +420,134 @@ class _ResultErrorView extends StatelessWidget {
         ]),
       ),
       const SizedBox(height: Tok.s12),
-      FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+      if (isHost)
+        FilledButton(onPressed: busy ? null : onPrimary, child: Text(primaryLabel))
+      else
+        Panel(
+          padding: const EdgeInsets.symmetric(horizontal: Tok.s16, vertical: 14),
+          color: Tok.wash,
+          child: Row(children: [
+            const PhosphorIcon(PhosphorIconsBold.hourglassMedium, size: 18, color: Tok.secondary),
+            const SizedBox(width: Tok.s12),
+            Expanded(child: Text('Waiting for the host', style: T.body(size: 14.5, weight: FontWeight.w500))),
+          ]),
+        ),
       const SizedBox(height: Tok.s8),
       OutlinedButton(onPressed: onSecondary, child: Text(secondaryLabel)),
     ]);
   }
 }
+/// Opens a Careem link (careemfood://...). If the device cannot open it, copies it and says so.
+Future<void> openCareemLink(BuildContext context, String? link) async {
+  final messenger = ScaffoldMessenger.of(context);
+  if (link == null || link.isEmpty) {
+    messenger.showSnackBar(const SnackBar(behavior: SnackBarBehavior.floating, content: Text('No restaurant link available.')));
+    return;
+  }
+  var opened = false;
+  if (kIsWeb) {
+    // A browser reports success for any custom link, even when no app handles it. So copy the link first
+    // and say so: if the Careem app does not open, the person can still paste it.
+    var copied = true;
+    try {
+      await Clipboard.setData(ClipboardData(text: link));
+    } catch (_) {
+      copied = false;
+    }
+    messenger.showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      content: Text(copied ? 'Opening Careem. If nothing opens, the link is copied: paste it in the Careem app.' : 'Opening Careem. If nothing opens: $link'),
+    ));
+    try {
+      final uri = Uri.tryParse(link);
+      if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    return;
+  }
+  try {
+    final uri = Uri.tryParse(link);
+    if (uri != null) opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    opened = false;
+  }
+  if (!opened) {
+    var copied = true;
+    try {
+      await Clipboard.setData(ClipboardData(text: link));
+    } catch (_) {
+      copied = false;
+    }
+    messenger.showSnackBar(SnackBar(
+      behavior: SnackBarBehavior.floating,
+      content: Text(copied ? 'Link copied. Open it in the Careem app.' : 'Open this in the Careem app: $link'),
+    ));
+  }
+}
 
-/// Step 11 (post-order): "Order ready" -> "Go to {restaurant}" for the viewer's own group.
+/// After the host sent everyone to the restaurant: "Go to {restaurant}" with that person's own group.
+/// Everyone reads this from the room, so guests see it as well as the host.
 class OrderedView extends StatelessWidget {
   const OrderedView({super.key, required this.ctrl, required this.onDone});
   final RoomController ctrl;
   final VoidCallback onDone;
 
-  Future<void> _openLink(BuildContext context, String? link) async {
-    if (link == null || link.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(behavior: SnackBarBehavior.floating, content: Text('No restaurant link available.')),
-      );
-      return;
-    }
-    var opened = false;
-    try {
-      final uri = Uri.tryParse(link);
-      if (uri != null) {
-        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } catch (_) {
-      opened = false;
-    }
-    if (!opened) {
-      await Clipboard.setData(ClipboardData(text: link));
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(behavior: SnackBarBehavior.floating, content: Text('Could not open link — copied to clipboard instead.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final room = ctrl.room!;
-    final isDineOut = room.mode == RoomMode.dineout;
     final group = ctrl.myGroup();
-    final restName = group?.restaurant.name ?? 'your restaurant';
-    final orderGroup = group == null ? null : ctrl.orderStatusFor(group.groupId);
-    final link = orderGroup?.restaurantLink ?? group?.restaurant.link;
+    final order = group == null ? null : ctrl.orderStatusFor(group.groupId);
+    final restName = group?.restaurant.name ?? order?.restaurantName ?? 'your restaurant';
+    final link = order?.restaurantLink ?? group?.restaurant.link;
+    final isDineOut = room.mode == RoomMode.dineout;
+    final host = room.participantById(room.hostId);
+    final hostName = host?.name ?? 'The host';
+    final hint = isDineOut
+        ? 'Head over together.'
+        : (ctrl.isHost
+            ? 'Open the restaurant in Careem, start a group order and share it with your group.'
+            : '$hostName starts the group order in Careem and shares it with you. Open the restaurant now and join it.');
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Expanded(
         child: CenteredScroll(children: [
-          Tag(isDineOut ? 'Spot ready' : 'Order ready', colors: Tok.green),
+          Tag(isDineOut ? 'Spot ready' : 'Group order', colors: Tok.green),
           const SizedBox(height: Tok.s16),
           Text('Go to $restName.', style: T.display(40)),
           const SizedBox(height: Tok.s12),
-          Text(
-            orderGroup?.message.isNotEmpty == true
-                ? orderGroup!.message
-                : (isDineOut
-                    ? 'Your group agreed on $restName. Open the restaurant details to head over.'
-                    : 'Your group basket at $restName is prepared. Open Careem to review and finish.'),
-            style: T.secondary(size: 16),
-          ),
+          Text(hint, style: T.secondary(size: 16)),
           if (group != null) ...[
             const SizedBox(height: Tok.s24),
             Panel(
               padding: const EdgeInsets.all(Tok.s16),
-              child: Row(children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(Tok.radiusSm),
-                  child: SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: FoodImage(
-                      url: group.restaurant.imageUrl,
-                      seed: group.restaurant.cuisine,
-                      label: group.restaurant.name,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(Tok.radiusSm),
+                    child: SizedBox(
+                      width: 60,
                       height: 60,
-                      iconSize: 24,
+                      child: FoodImage(url: group.restaurant.imageUrl, seed: group.restaurant.cuisine, label: group.restaurant.name, height: 60, iconSize: 24),
                     ),
                   ),
-                ),
-                const SizedBox(width: Tok.s12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(group.restaurant.name, style: T.body(size: 16, weight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(
-                      isDineOut
-                          ? '${group.participantIds.length} going together'
-                          : '${group.basket.length} items · ${money(group.totalPrice, group.currency)}',
-                      style: T.secondary(size: 13.5),
-                    ),
-                  ]),
-                ),
+                  const SizedBox(width: Tok.s12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(group.restaurant.name, style: T.body(size: 16, weight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text('${group.participantIds.length} going together', style: T.secondary(size: 13.5)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: Tok.s12),
+                Wrap(spacing: Tok.s12, runSpacing: Tok.s8, children: [
+                  for (final pid in group.participantIds)
+                    if (room.participantById(pid) != null)
+                      Row(mainAxisSize: MainAxisSize.min, children: [
+                        ParticipantAvatar(id: pid, name: room.participantById(pid)!.name, isHost: room.participantById(pid)!.isHost, size: 28),
+                        const SizedBox(width: 6),
+                        Text(pid == ctrl.participantId ? '${room.participantById(pid)!.name} (you)' : room.participantById(pid)!.name, style: T.body(size: 13)),
+                      ]),
+                ]),
               ]),
             ),
           ],
@@ -652,19 +555,15 @@ class OrderedView extends StatelessWidget {
       ),
       const SizedBox(height: Tok.s12),
       FilledButton.icon(
-        onPressed: () => _openLink(context, link),
+        onPressed: () => openCareemLink(context, link),
         icon: const PhosphorIcon(PhosphorIconsBold.arrowSquareOut, size: 18),
-        label: Text('Go to $restName'),
+        label: Text('Open $restName in Careem'),
       ),
       const SizedBox(height: Tok.s8),
-      OutlinedButton(
-        onPressed: onDone,
-        child: const Text('Back to Careem'),
-      ),
+      OutlinedButton(onPressed: onDone, child: const Text('Back to Careem')),
     ]);
   }
 }
-
 // ── Collapsible Agent Trace ───────────────────────────────────────────────────
 class AgentTrace extends StatefulWidget {
   const AgentTrace({super.key, required this.steps});

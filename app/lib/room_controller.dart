@@ -27,6 +27,12 @@ class RoomController extends ChangeNotifier {
   RoomResult? result;
   OrderResult? orderResult;
 
+  /// The hand-off for everyone: from the host's own response, else from the room (so guests see it too).
+  OrderResult? get order => orderResult ?? room?.order;
+
+  /// Swipes that did not reach the server yet; re-sent on the next poll so nobody gets stuck waiting.
+  final List<({SwipeLevel level, String cardId, bool liked})> _pendingSwipes = [];
+
   bool initialLoading = true;
   bool busy = false;
   String? error;
@@ -75,6 +81,7 @@ class RoomController extends ChangeNotifier {
     if (_disposed || _polling) return;
     _polling = true;
     try {
+      await _flushPendingSwipes();
       final fetched = await api.getRoom(roomCode, participantId: participantId);
       final recovered = _consecutivePollErrors >= 3;
       _consecutivePollErrors = 0;
@@ -184,10 +191,39 @@ class RoomController extends ChangeNotifier {
         await _pollOnce(force: true);
       }
       return resp;
-    } catch (_) {
-      error = 'A swipe did not reach the server.';
-      _notify();
+    } on ApiException catch (e) {
+      // The server understood and said no (wrong level, room moved on): retrying would not help.
+      if (e.statusCode != null && e.statusCode! < 500 && e.statusCode != 408 && e.statusCode != 429) {
+        error = e.message;
+        _notify();
+        return null;
+      }
+      _pendingSwipes.add((level: level, cardId: cardId, liked: liked));
       return null;
+    } catch (_) {
+      // Network blip: keep it and send it again on the next poll (the card is already gone from the deck).
+      _pendingSwipes.add((level: level, cardId: cardId, liked: liked));
+      return null;
+    }
+  }
+
+  Future<void> _flushPendingSwipes() async {
+    final pid = participantId;
+    if (pid == null || _pendingSwipes.isEmpty) return;
+    while (_pendingSwipes.isNotEmpty) {
+      final s = _pendingSwipes.first;
+      try {
+        await api.swipe(roomCode, participantId: pid, level: s.level, cardId: s.cardId, liked: s.liked);
+      } on ApiException catch (e) {
+        if (e.statusCode != null && e.statusCode! < 500) {
+          _pendingSwipes.removeAt(0); // rejected for good (e.g. the level already moved on); drop it
+          continue;
+        }
+        return;
+      } catch (_) {
+        return; // still offline: try again next poll
+      }
+      _pendingSwipes.removeAt(0);
     }
   }
 
@@ -222,12 +258,36 @@ class RoomController extends ChangeNotifier {
     await _pollOnce(force: true);
   }
 
+  /// Host: run the matching again after it failed.
+  Future<void> retryMatch() async {
+    await _runAction(() => api.retryMatch(roomCode, participantId: participantId!), fallbackError: 'Could not retry the match.');
+    _lastTraceLen = -1;
+    _lastResultStatus = null;
+  }
+
+  /// Host: new round with the same people (after "no match").
+  Future<void> restart() async {
+    await _runAction(() => api.restartRoom(roomCode, participantId: participantId!), fallbackError: 'Could not start a new round.');
+    if (error == null) {
+      // forget everything about the old round so the next swipe level loads fresh cards
+      cards = null;
+      result = null;
+      orderResult = null;
+      _fetchedCardsLevel = null;
+      _lastTraceLen = -1;
+      _lastResultStatus = null;
+      _pendingSwipes.clear();
+      _notify();
+    }
+  }
+
+  /// Host: send everyone to the chosen restaurant in Careem. Returns the hand-off, or null if it failed.
   Future<OrderResult?> submitOrder() async {
     OrderResult? out;
     await _runAction(() async {
       out = await api.createOrder(roomCode, participantId: participantId!);
       orderResult = out;
-    }, fallbackError: 'Could not prepare the order.');
+    }, fallbackError: 'Could not send everyone to the restaurant.');
     return out;
   }
 
@@ -245,7 +305,7 @@ class RoomController extends ChangeNotifier {
   }
 
   OrderGroupStatus? orderStatusFor(String groupId) {
-    final gs = orderResult?.groups ?? const <OrderGroupStatus>[];
+    final gs = order?.groups ?? const <OrderGroupStatus>[];
     for (final g in gs) {
       if (g.groupId == groupId) return g;
     }
