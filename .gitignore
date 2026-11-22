@@ -17,3 +17,8 @@ build/
 
 # Local sandbox runtime
 .run/
+
+# Node / sandbox runtime
+node_modules/
+sandbox/*.log
+backend/tools.*
