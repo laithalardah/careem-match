@@ -28,6 +28,14 @@ def demo_enabled() -> bool:
     return flag("DEMO")
 
 
+def sandbox_mcp() -> bool:
+    """True when MCP_URL points at the local sandbox (it answers with fixed test data, not our items)."""
+    from urllib.parse import urlparse
+
+    host = urlparse(os.getenv("MCP_URL", "http://127.0.0.1:8787/mcp")).hostname or ""
+    return host in ("127.0.0.1", "localhost", "::1")
+
+
 def public_app_url() -> str:
     return os.getenv("PUBLIC_APP_URL", "http://localhost:8080").rstrip("/")
 

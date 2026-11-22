@@ -220,7 +220,13 @@ def choose_dishes(room: Room, rest: Restaurant, pids: list[str]) -> list[tuple[s
     out = []
     for pid in pids:
         ordered_before = history_items(room, pid)
-        best = max(active, key=lambda d: (2 if d.name.lower() in ordered_before else 0) + (1 if used[d.id] == 0 else 0))
+
+        def score(d: Dish) -> float:
+            # something they ordered before (+2), a dish nobody has yet (+1.5) and a mild lean to cheaper dishes;
+            # a repeat costs 2 per time it was already taken, so a group does not end up with four of the same dish
+            return (2 if d.name.lower() in ordered_before else 0) + (1.5 if used[d.id] == 0 else -2 * used[d.id]) - d.price / 1000
+
+        best = max(active, key=score)
         used[best.id] += 1
         out.append((pid, best))
     return out
@@ -332,22 +338,32 @@ async def plan_one(room: Room, group: dict, group_id: str, resolution: str) -> t
     trace = Trace(group_id)
     try:
         async with (GATEWAY_FACTORY or make_gateway)(room) as gw:
-            plan = None
-            if config.agent_mode() == "bedrock" and room.mode == "food":
-                import agent
+            # Handle every failure INSIDE the block: the MCP session wraps exceptions that leave it in an
+            # unreadable ExceptionGroup, and we would lose the trace.
+            try:
+                plan = None
+                if config.agent_mode() == "bedrock" and room.mode == "food":
+                    import agent
 
-                try:
-                    plan = await agent.plan_with_agent(room, gw, group, trace, resolution)
-                except Exception as e:  # noqa: BLE001
-                    log.warning("agent failed for room %s: %s: %s", room.code, type(e).__name__, e)
-                    hint = " (credentials expired: run refresh_env.ps1)" if agent.is_expired_credentials(e) else ""
-                    trace.add("agent", {}, f"Bedrock agent unavailable{hint}: {type(e).__name__}. Using the deterministic planner.", failed=True)
-            if plan is None:
-                plan = await plan_deterministic(room, gw, group, trace, resolution)
-            room.plans[group_id] = plan
-            return group_payload(room, group_id, plan, group), trace, None
-    except (PlanFailed, LookupFailed) as e:
-        return None, trace, str(e)
+                    try:
+                        plan = await agent.plan_with_agent(room, gw, group, trace, resolution)
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("agent failed for room %s: %s: %s", room.code, type(e).__name__, e)
+                        hint = " (credentials expired: run refresh_env.ps1)" if agent.is_expired_credentials(e) else ""
+                        trace.add("agent", {}, f"Bedrock agent unavailable{hint}: {type(e).__name__}. Using the deterministic planner.", failed=True)
+                if plan is None:
+                    plan = await plan_deterministic(room, gw, group, trace, resolution)
+                room.plans[group_id] = plan
+                return group_payload(room, group_id, plan, group), trace, None
+            except (PlanFailed, LookupFailed) as e:
+                return None, trace, str(e)
+            except Exception as e:  # noqa: BLE001
+                log.exception("planning crashed for room %s", room.code)
+                return None, trace, f"unexpected error ({type(e).__name__})"
+    except Exception as e:  # noqa: BLE001  (could not even open the connection)
+        log.warning("gateway failed for room %s: %s: %s", room.code, type(e).__name__, e)
+        trace.add("connect", {}, f"Could not reach the restaurant data service ({type(e).__name__}).", failed=True)
+        return None, trace, "the restaurant data service is unreachable"
 
 
 GATEWAY_FACTORY = None  # tests replace this with a fake gateway factory

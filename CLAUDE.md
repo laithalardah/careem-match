@@ -30,9 +30,11 @@ commit after each working step.
 - Errors are readable messages: explain them and decide whether a retry makes sense.
 - Location: Amman, Jordan. Currency: JOD.
 
-## API (exact, Flutter builds against it)
-- `POST /session/start {location}` -> `{session_id, dishes:[{id,name,image_url,cuisine}]}`
-- `POST /session/{id}/swipe {player:1|2, dish_id, liked}` -> `{ok:true}`
-- `POST /session/{id}/run {}` -> `{ok:true}` (agent runs async)
-- `GET /session/{id}/result` -> `{status:"ready"|"running"|"failed"|"no_match", restaurant:{id,name,image_url,cuisine,rating}, basket:[{player,dish_name,price,image_url}], total_price, currency, reasoning, agent_trace:[{iteration,tool,input,output_summary}]}`
-- `GET /health` -> `{status:"ok"}`
+## API v2.1 (group rooms)
+Single source of truth: **docs/v2-plan.md section 4** (the old two-player API is gone). Rooms have a host and guests;
+stages: lobby -> settings -> swiping -> dispute (only if no consensus) -> matching -> result -> ordered.
+- Backend lives in `backend/` (FastAPI). Run: `DEMO=1 uvicorn main:app --host 0.0.0.0 --port 8000`. Tests: `pytest`.
+  Live demo: `python scripts/demo_room.py --scenario consensus|wheel|split [--order]`.
+- Order step: the host's tap is the only approval. Only `cart_add_items` may mutate (allow-list in `order.py`), it is never
+  retried automatically, and checkout / order-placing tools are NEVER called.
+- Credentials are re-read from `.env` on every Bedrock call (`bedrock_client.py`); refresh them with `refresh_env.ps1`.

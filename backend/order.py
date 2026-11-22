@@ -129,9 +129,16 @@ async def create_orders(room: Room, pid: str) -> dict:
                      "restaurant_link": g["restaurant"]["link"],
                      "message": f"Head to {g['restaurant']['name']}. Nothing was ordered."} for g in groups]
     else:
-        async with (CART_FACTORY or make_cart)() as cart:
-            for g in groups:
-                outcomes.append(await _order_group(room, cart, g, state.setdefault(g["group_id"], {"added": set()})))
+        try:
+            async with (CART_FACTORY or make_cart)() as cart:
+                for g in groups:
+                    outcomes.append(await _order_group(room, cart, g, state.setdefault(g["group_id"], {"added": set()})))
+        except Exception as e:  # noqa: BLE001  (e.g. could not connect: nothing was sent, safe to try again)
+            log.warning("order failed for %s: %s: %s", room.code, type(e).__name__, e)
+            done = {o["group_id"] for o in outcomes}
+            outcomes += [{"group_id": g["group_id"], "status": "failed", "price_breakdown": None, "restaurant_link": g["restaurant"]["link"],
+                          "message": f"Could not reach Careem ({type(e).__name__}). Nothing was changed; you can try again."}
+                         for g in groups if g["group_id"] not in done]
 
     ok = all(o["status"] in ("basket_ready", "go") for o in outcomes)
     status = "go" if room.mode == "dineout" else ("basket_ready" if ok else "failed")
@@ -164,23 +171,63 @@ async def _order_group(room: Room, cart, g: dict, st: dict) -> dict:
             log.error("cart_add_items outcome unknown for %s: %s", room.code, e)
             return {**base, "status": "failed", "price_breakdown": None,
                     "message": f"We could not confirm the order was added ({e}). Check your basket in the Careem app before trying again, so nothing is added twice."}
-        if len(results) != len(todo):
-            return {**base, "status": "failed", "price_breakdown": None,
-                    "message": "Careem answered in an unexpected way. Check your basket in the Careem app before trying again."}
-        failed = []
-        for idx, res in zip(todo, results):
-            if res.get("success"):
-                st["added"].add(idx)
-            else:
-                failed.append(f"{plan.lines[idx].dish.name} ({res.get('error') or res.get('message') or 'not available'})")
+        added, failed, unverified = match_results(plan, todo, results)
+        st["added"] |= added
+        if unverified and config.sandbox_mcp() and any(r.get("success") for r in results):
+            # The sandbox answers with fixed test data instead of echoing our items. Accept, but say so.
+            st["added"] |= unverified
+            unverified = set()
+            note = " (Sandbox answered with fixed test data, so the items could not be verified.)"
+        else:
+            note = ""
+        failed += [f"{plan.lines[i].dish.name} (Careem did not confirm it)" for i in sorted(unverified)]
         if failed:
             return {**base, "status": "failed", "price_breakdown": None,
-                    "message": "These could not be added: " + "; ".join(failed) + ". The rest are in the basket; trying again only adds what is missing."}
+                    "message": "These could not be added: " + "; ".join(failed)
+                    + ". Check your basket in the Careem app. Trying again only adds what is missing."}
+    else:
+        note = ""
 
     try:
-        breakdown = breakdown_from_price(await cart.price(plan.restaurant.id), currency)
-        msg = f"Basket created at {plan.restaurant.name}. Not paid."
+        if config.sandbox_mcp():
+            # The sandbox's price lookup is fixed test data that does not match our items, so show our own estimate.
+            breakdown = estimate(plan, currency)
+            msg = f"Basket created at {plan.restaurant.name}. Not paid. (Sandbox prices are fixed test data; this is the estimate from menu prices.)"
+        else:
+            breakdown = breakdown_from_price(await cart.price(plan.restaurant.id), currency)
+            msg = f"Basket created at {plan.restaurant.name}. Not paid."
     except Exception as e:  # noqa: BLE001  (price is a read; the basket itself is fine)
         breakdown = estimate(plan, currency)
         msg = f"Basket created at {plan.restaurant.name}, but the final price could not be read ({type(e).__name__}); showing an estimate."
-    return {**base, "status": "basket_ready", "price_breakdown": breakdown, "message": msg}
+    return {**base, "status": "basket_ready", "price_breakdown": breakdown, "message": msg + note}
+
+
+def match_results(plan, todo: list[int], results: list[dict]) -> tuple[set[int], list[str], set[int]]:
+    """Pair each requested line with Careem's answer for the same catalog_item_id (each answer used once).
+    Returns (added line indexes, failure texts, lines Careem gave no answer for)."""
+    pool = list(results)
+    added: set[int] = set()
+    failed: list[str] = []
+    unverified: set[int] = set()
+    for idx in todo:
+        item_id = plan.lines[idx].dish.id
+        k = next((j for j, r in enumerate(pool) if str(r.get("catalog_item_id")) == item_id), None)
+        if k is None:
+            unverified.add(idx)
+            continue
+        r = pool.pop(k)
+        if r.get("success"):
+            added.add(idx)
+        else:
+            failed.append(f"{plan.lines[idx].dish.name} ({r.get('error') or r.get('message') or 'not available'})")
+    # answers without ids (refused call): same order as the request
+    if unverified and all("catalog_item_id" not in r for r in results) and len(results) == len(todo):
+        by_pos = dict(zip(todo, results))
+        for idx in sorted(unverified):
+            r = by_pos[idx]
+            if r.get("success"):
+                added.add(idx)
+            else:
+                failed.append(f"{plan.lines[idx].dish.name} ({r.get('error') or r.get('message') or 'not available'})")
+        unverified = set()
+    return added, failed, unverified

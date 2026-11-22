@@ -97,6 +97,20 @@ GET  /health -> {status:"ok", demo:bool}
 ```
 Join link: `{PUBLIC_APP_URL}/#/join/{room_code}`.
 
+### 4b. Details settled while building the backend
+- **Errors**: HTTP 403 (not allowed), 404 (unknown room), 409 (wrong stage / nothing to do), 422 (bad input), always `{"detail": "<readable message>"}`.
+- **Responses**: `swipe` -> `{ok, level_done}`; `demo-friends` -> `{ok, added:[{id,name}]}`; `next`, `settings`, `start`, `dispute/*` -> `{ok:true}`.
+- **Start** returns 409 with a readable message when the meal has no open restaurant (e.g. dessert in the sandbox).
+- **Progress**: `participants[].progress` is `{level, swiped, total, done}` (level null outside swiping).
+- **Result** while matching is `{status:"running", groups:[], ...}`; `scores` is filled from the start; `agent_trace[].group_id` is "g1", "g2"...
+- **Order response**: `{status:"basket_ready"|"go"|"failed", message, groups:[{group_id, status, restaurant_link, message, price_breakdown}]}`.
+  `price_breakdown = {currency, lines:[{label, amount}], total}` or null. A failed order leaves the stage on `result` so the host can retry
+  (only the missing lines are re-added); success moves the room to `ordered`. A second tap after success returns the same answer.
+- **Demo friends** vote alternately (1st wheel, 2nd split, ...), so the host's vote is always decisive. They never move groups.
+- **Sandbox quirks**: its cart and price answers are fixed test data, so the order step accepts them with a note and shows our own price estimate.
+  Against the real MCP, confirmations are matched by item id and unconfirmed items are a failure.
+- **Run**: `DEMO=1 uvicorn main:app --host 0.0.0.0 --port 8000` (from `backend/`), sandbox MCP at 127.0.0.1:8787, `.env` for AWS keys.
+
 ## 5. Prompt for Antigravity (front end)
 See `docs/prompt-antigravity.md`.
 

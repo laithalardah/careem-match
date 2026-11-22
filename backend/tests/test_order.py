@@ -29,9 +29,12 @@ class FakeCart:
             raise order.AddUnknown("TimeoutError")
         if self.mode == "refused":
             return [{"success": False, "error": "merchant closed"} for _ in items]
+        if self.mode == "fixed":  # like the sandbox: answers about items we never sent
+            return [{"catalog_item_id": "700401", "success": True}, {"catalog_item_id": "700402", "success": True}]
+        ids = [i["catalog_item_id"] for i in items]
         if self.mode == "partial" and len([c for c in self.log if c[0] == "add"]) == 1:
-            return [{"success": i != 1, "error": "out of stock"} for i, _ in enumerate(items)]
-        return [{"success": True, "item_uuid": f"u{i}"} for i, _ in enumerate(items)]
+            return [{"catalog_item_id": ids[i], "success": i != 1, "error": "out of stock"} for i in range(len(items))]
+        return [{"catalog_item_id": ids[i], "success": True, "item_uuid": f"u{i}"} for i in range(len(items))]
 
     async def price(self, merchant_id):
         self.log.append(("price", merchant_id))
@@ -63,7 +66,18 @@ def test_only_the_host_can_approve_and_only_after_a_result(h, monkeypatch):
     assert log == []  # nothing was sent
 
 
+def test_sandbox_shows_our_estimate_not_its_fixed_price(h, monkeypatch):
+    log = []
+    monkeypatch.setattr(order, "CART_FACTORY", lambda: FakeCart(log=log))
+    code, pids = ready(h)  # MCP_URL is the local sandbox in tests
+    g = post(h, code, pids["A"]).json()["groups"][0]
+    est = round(sum(b["price"] for b in h.c.get(f"/rooms/{code}/result").json()["groups"][0]["basket"]), 2)
+    assert g["price_breakdown"]["total"] == est and "estimate" in g["message"]
+    assert not [c for c in log if c[0] == "price"]  # the fixed sandbox price is not even read
+
+
 def test_host_approval_adds_everyone_once_and_never_checks_out(h, monkeypatch):
+    monkeypatch.setenv("MCP_URL", "https://mcp.careemapis.com/mcp")  # real price breakdown path
     log = []
     monkeypatch.setattr(order, "CART_FACTORY", lambda: FakeCart(log=log))
     code, pids = ready(h)
@@ -129,6 +143,36 @@ def test_partial_failure_retry_only_adds_what_is_missing(h, monkeypatch):
     assert second["status"] == "basket_ready"
     adds = [c for c in log if c[0] == "add"]
     assert len(adds) == 2 and len(adds[0][2]) == 4 and len(adds[1][2]) == 1  # only the one that failed
+
+
+def test_sandbox_fixed_answers_are_accepted_with_a_note(h, monkeypatch):
+    monkeypatch.setattr(order, "CART_FACTORY", lambda: FakeCart("fixed"))
+    code, pids = ready(h)  # MCP_URL is the local sandbox in tests
+    body = post(h, code, pids["A"]).json()
+    assert body["status"] == "basket_ready"
+    assert "could not be verified" in body["groups"][0]["message"]
+
+
+def test_against_the_real_mcp_unconfirmed_items_are_a_failure(h, monkeypatch):
+    monkeypatch.setenv("MCP_URL", "https://mcp.careemapis.com/mcp")
+    monkeypatch.setattr(order, "CART_FACTORY", lambda: FakeCart("fixed"))
+    code, pids = ready(h)
+    body = post(h, code, pids["A"]).json()
+    assert body["status"] == "failed" and "did not confirm" in body["groups"][0]["message"]
+    assert h.state(code)["stage"] == "result"
+
+
+def test_confirmations_are_matched_by_item_id_not_position():
+    from planner import Plan, PlanLine
+    from catalog import Catalog, load_cache
+
+    r = Catalog(load_cache(), "cache").by_id(30101)
+    wrap, falafel = r.dishes[0], r.dishes[1]
+    plan = Plan(r, [PlanLine("a", wrap), PlanLine("b", falafel)], "", [])
+    # answers come back in the opposite order, one failed
+    results = [{"catalog_item_id": falafel.id, "success": False, "error": "sold out"}, {"catalog_item_id": wrap.id, "success": True}]
+    added, failed, unverified = order.match_results(plan, [0, 1], results)
+    assert added == {0} and unverified == set() and failed == [f"{falafel.name} (sold out)"]
 
 
 def test_refused_call_is_reported(h, monkeypatch):

@@ -200,7 +200,7 @@ async def plan_with_agent(room: Room, gw, group: dict, trace: Trace, resolution:
     for i in range(MAX_ITERATIONS):
         resp = await asyncio.to_thread(
             converse, messages, system=[{"text": SYSTEM}], toolConfig={"tools": TOOLS},
-            inferenceConfig={"maxTokens": 1500, "temperature": 0})
+            inferenceConfig={"maxTokens": 1500})  # no `temperature`: deprecated for this model (Bedrock rejects it)
         u = resp.get("usage", {})
         tokens += u.get("inputTokens", 0) + u.get("outputTokens", 0)
         msg = resp["output"]["message"]

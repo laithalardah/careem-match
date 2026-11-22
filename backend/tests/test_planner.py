@@ -35,6 +35,16 @@ def test_consensus_basket_with_required_options(h):
     assert res["reasoning"] == g["reasoning"] and "3 of 4" in g["reasoning"]
 
 
+def test_a_group_does_not_get_four_of_the_same_dish(h):
+    code, pids = play(h, CONSENSUS)
+    basket = result(h, code)["groups"][0]["basket"]
+    dishes = [b["dish_name"] for b in basket]
+    # Shawarma Station has 3 dishes for 4 people: all three appear, only one repeats
+    assert len(set(dishes)) == 3
+    from collections import Counter
+    assert max(Counter(dishes).values()) == 2
+
+
 def test_history_decides_the_host_dish(h):
     code, pids = play(h, CONSENSUS)
     g = result(h, code)["groups"][0]
@@ -92,6 +102,33 @@ def test_everything_failing_gives_a_readable_failure(h, monkeypatch):
     res = result(h, code)
     assert res["status"] == "failed" and "upstream unavailable" in res["reasoning"]
     assert res["groups"] == [] and res["restaurant"] is None
+
+
+def test_total_outage_keeps_the_trace_and_a_readable_message(h, monkeypatch):
+    # the real MCP session wraps escaping exceptions in an ExceptionGroup; the planner must not leak that
+    install(monkeypatch, CATALOG, fail={30101: -1, 30103: -1}, wrap_exit=True)
+    code, _ = play(h, BOTH)
+    res = result(h, code)
+    assert res["status"] == "failed"
+    assert "TaskGroup" not in res["reasoning"] and "upstream unavailable" in res["reasoning"]
+    assert [s for s in res["agent_trace"] if s["failed"]], "the failed lookups must stay visible in the trace"
+
+
+def test_connection_failure_is_reported_not_crashed(h, monkeypatch):
+    import planner
+
+    class Down:
+        async def __aenter__(self):
+            raise ConnectionRefusedError("sandbox is down")
+
+        async def __aexit__(self, *exc):
+            return None
+
+    monkeypatch.setattr(planner, "GATEWAY_FACTORY", lambda room: Down())
+    code, _ = play(h, BOTH)
+    res = result(h, code)
+    assert res["status"] == "failed" and "unreachable" in res["reasoning"]
+    assert any(s["tool"] == "connect" and s["failed"] for s in res["agent_trace"])
 
 
 def test_dishes_with_unresolvable_required_options_are_skipped(h, monkeypatch):

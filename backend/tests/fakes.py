@@ -11,8 +11,9 @@ class FakeGateway:
 
     cached = False
 
-    def __init__(self, catalog, *, close_first=False, fail=None, hollow=False):
+    def __init__(self, catalog, *, close_first=False, fail=None, hollow=False, wrap_exit=False):
         self.catalog = catalog
+        self.wrap_exit = wrap_exit  # mimic the MCP session turning escaping exceptions into an ExceptionGroup
         self.close_first, self.closed = close_first, None
         self.fail = dict(fail or {})  # restaurant id -> failures left (-1 = always)
         self.hollow = hollow  # required option groups with nothing to choose from
@@ -22,6 +23,8 @@ class FakeGateway:
         return self
 
     async def __aexit__(self, *exc):
+        if self.wrap_exit and exc[1] is not None:
+            raise ExceptionGroup("unhandled errors in a TaskGroup", [exc[1]])
         return None
 
     async def menu(self, rid):

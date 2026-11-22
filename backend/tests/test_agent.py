@@ -88,6 +88,18 @@ def test_any_bedrock_error_falls_back(h, monkeypatch):
     assert "refresh_env.ps1" not in steps(res, "agent")[0]["output_summary"]
 
 
+def test_bedrock_call_has_no_deprecated_temperature(h, monkeypatch):
+    seen = {}
+    inner = ScriptedBedrock(CATALOG, "good")
+
+    def spy(messages, **kw):
+        seen.update(kw)
+        return inner(messages, **kw)
+
+    run(h, monkeypatch, spy)
+    assert "temperature" not in seen.get("inferenceConfig", {}) and seen["inferenceConfig"]["maxTokens"] > 0
+
+
 def test_model_only_gets_read_only_tools():
     names = {t["toolSpec"]["name"] for t in agent.TOOLS}
     assert names == {"get_restaurant_menu", "get_item_options", "submit_plan"}
